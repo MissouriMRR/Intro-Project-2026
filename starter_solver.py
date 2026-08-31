@@ -42,8 +42,11 @@ def solve(grid, start, target):
     path = []
     current = start
     for _ in range(10):
+        # If end has been reached, break loop
         if current == target:
             break
+        # Sample path finding algorithm (doesn't work, just oscillates between (0,0) and (1,0))
+        # dr = delta_row, dc = delta column
         for direction, (dr, dc) in MOVES.items():
             nr, nc = current[0] + dr, current[1] + dc
             if 0 <= nr < len(grid) and 0 <= nc < len(grid[0]) and grid[nr][nc] != "#":
