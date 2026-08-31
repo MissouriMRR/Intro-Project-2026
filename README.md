@@ -1,5 +1,10 @@
 # python-template
 
+> [!IMPORTANT]
+> **Working on the Drone Pathfinder Challenge?** The project instructions
+> are in [PROJECT_README.md](PROJECT_README.md). Read the setup steps below
+> first, then go there.
+
 This is a template used for all new Python-based repositories for the team, setting up things like pre-commit hooks, uv environments, and CI/CD.
 
 This README contains instructions on how to get started with this template and how to start expanding it to fit what you need for your project.
