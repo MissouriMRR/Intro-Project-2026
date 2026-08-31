@@ -39,11 +39,21 @@ Score yourself against the practice map at any time:
 uv run scorer.py starter_solver.py
 ```
 
-See your actual flight path drawn on the map:
+See your actual flight path drawn on the map — arrows show which way the
+drone flew out of each cell, magenta marks cells it flew over more than
+once, and `X` marks a crash:
 
 ```bash
 uv run visualize.py starter_solver.py maps/practice_maps/practice_map.txt
 ```
+
+Or watch the flight replay one move at a time:
+
+```bash
+uv run visualize.py starter_solver.py maps/practice_maps/practice_map.txt --animate
+```
+
+Add `--delay 0.5` to slow the replay down, or `--no-color` for plain output.
 
 ## Files
 
@@ -52,7 +62,7 @@ uv run visualize.py starter_solver.py maps/practice_maps/practice_map.txt
 | `starter_solver.py`                   | **Start here.** Contains the interface + a placeholder that intentionally fails, so you can confirm the harness runs before writing real logic |
 | `map_utils.py`                        | Loads map files, shared move constants                                                                                                         |
 | `scorer.py`                           | Runs one or more solvers against a set of maps and prints a leaderboard                                                                        |
-| `visualize.py`                        | Prints an ASCII rendering of a solved path — good for debugging, and for the projector during the demo                                         |
+| `visualize.py`                        | Draws the route your solver flew (direction arrows, revisits, crash point) with an optional step-by-step replay                                |
 | `gen_maps.py`                         | Generates maps with a guaranteed valid path — use it to make extra practice maps                                                               |
 | `maps/practice_maps/practice_map.txt` | Use this map for testing as you develop your algorithm                                                                                         |
 
