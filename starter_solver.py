@@ -1,6 +1,6 @@
 """
 starter_solver.py
-TEAM NAME: <fill in your team name here>
+TEAM NAME: Pathfinding
 
 Your job: implement solve() so it returns a list of moves that flies
 the drone from `start` to `target` without crossing any '#' cells.
