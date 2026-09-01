@@ -12,8 +12,8 @@ def solve(grid, start, target):
                 binMap[row, col] = 0  
             else:
                 binMap[row, col] = 1
-    print(binMap)
 
+    
     # return path
 
 

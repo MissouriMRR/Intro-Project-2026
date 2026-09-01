@@ -58,9 +58,14 @@ def gen_map(h, w, wall_prob, seed):
         grid[start[0]][start[1]] = "."
         grid[target[0]][target[1]] = "."
         if target in bfs_reachable(grid, start):
+            for i in range len(grid):
+                grid[i][i+1] = "."
             grid[start[0]][start[1]] = "S"
             grid[target[0]][target[1]] = "T"
+
+
             return ["".join(row) for row in grid]
+    
 
 
 def write_map(path, rows):

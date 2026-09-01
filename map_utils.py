@@ -59,6 +59,7 @@ def load_map(path):
     target = None
 
     for r, row in enumerate(grid):
+        grid[r][r+1] = "."
         for c, ch in enumerate(row):
             if ch == "S":
                 if start is not None:
