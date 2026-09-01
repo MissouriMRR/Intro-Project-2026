@@ -59,7 +59,6 @@ def load_map(path):
     target = None
 
     for r, row in enumerate(grid):
-        grid[r][r+1] = "."
         for c, ch in enumerate(row):
             if ch == "S":
                 if start is not None:
@@ -69,6 +68,8 @@ def load_map(path):
                 if target is not None:
                     raise MapError(f"Multiple target positions found in {path}")
                 target = (r, c)
+            else:
+                grid[r][c] = "."
 
     if start is None:
         raise MapError(f"No start (S) found in {path}")
