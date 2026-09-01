@@ -32,27 +32,31 @@ MOVES = {
 }
 
 
+def mine_check(grid, x, y):
+    try:
+        if grid[x][y] == "#":
+            return True
+        return False
+    except:
+        return True
+
+
 def solve(grid, start, target):
-    # -----------------------------------------------------------
-    # REPLACE THIS with your own pathfinding logic (BFS, DFS,
-    # A*, whatever your team wants to try). This placeholder just
-    # proves the interface works: it does NOT reliably reach the
-    # target and will fail on most maps.
-    # -----------------------------------------------------------
     path = []
     current = start
-    for _ in range(10):
-        # If end has been reached, break loop
+    for _ in range(25):
         if current == target:
             break
-        # Sample path finding algorithm (doesn't work, just oscillates between (0,0) and (1,0))
-        # dr = delta_row, dc = delta column
-        for direction, (dr, dc) in MOVES.items():
-            nr, nc = current[0] + dr, current[1] + dc
-            if 0 <= nr < len(grid) and 0 <= nc < len(grid[0]) and grid[nr][nc] != "#":
-                path.append(direction)
-                current = (nr, nc)
-                break
+        delta = [current[0] - target[0], current[1] - target[1]]
+        if delta[0] != target[0] and not mine_check(grid, current[0] + 1, current[1]):
+            path.append("S")
+            current = (current[0] + 1, current[1])
+        elif delta[1] != target[1] and not mine_check(grid, current[0], current[1] + 1):
+            path.append("E")
+            current = (current[0], current[1] + 1)
+        else:
+            path.append("N")
+            current = (current[0] - 1, current[1])
     return path
 
 
