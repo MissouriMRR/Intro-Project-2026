@@ -47,7 +47,7 @@ def check_pos_validity(grid, row, col, row_max, col_max):
 
 def calc_h(row, col, dest):
 
-    # Calc manhattan distance
+    # Calculate manhattan distance
     return abs(row - dest[0]) + abs(col - dest[1])
 
 
@@ -83,10 +83,6 @@ def trace_target_route(cell_data, dest):
 
     # Make path go from source to destination
     path.reverse()
-
-    for i in path:
-        print("->", i, end=" ")
-    print()
 
     return path
 
@@ -144,7 +140,7 @@ def solve(grid, start, target):
 
             if check_pos_validity(grid, new_i, new_j, rows, cols) and (
                 not closed_grid[new_i][new_j]
-            ):  # BUGGED
+            ):
                 if grid[new_i][new_j] == "T":
                     cell_data[new_i][new_j]["parent_i"] = i
                     cell_data[new_i][new_j]["parent_j"] = j
