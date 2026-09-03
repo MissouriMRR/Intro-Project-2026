@@ -1,3 +1,5 @@
+from collections import deque
+
 """
 starter_solver.py
 TEAM NAME: <fill in your team name here>
@@ -24,36 +26,68 @@ target: (row, col) tuple
 # Hint: a queue is a handy building block for BFS. You don't have to use it.
 from collections import deque  # noqa: F401
 
-MOVES = {
-    "N": (-1, 0),
-    "S": (1, 0),
-    "E": (0, 1),
-    "W": (0, -1),
+TUPLE_TO_MOVE = {
+    (-1, 0): "N",
+    (1, 0): "S",
+    (0, 1): "E",
+    (0, -1): "W"
 }
 
 
+
 def solve(grid, start, target):
-    # -----------------------------------------------------------
-    # REPLACE THIS with your own pathfinding logic (BFS, DFS,
-    # A*, whatever your team wants to try). This placeholder just
-    # proves the interface works: it does NOT reliably reach the
-    # target and will fail on most maps.
-    # -----------------------------------------------------------
+    #The final path which will be returned
     path = []
-    current = start
-    for _ in range(10):
-        # If end has been reached, break loop
+
+    #The edge of the currently searched space.
+    frontier = deque()
+    frontier.append(start)
+
+    #A dictionary of (node: previous node) pairs found while flood filling
+    came_from = {}
+    came_from[start] = None
+
+    #While there are currently items on the frontier
+    while len(frontier) != 0:
+        #Pop left because we are appending to the right
+        current = frontier.popleft()
+
+        #If we find the target
         if current == target:
-            break
-        # Sample path finding algorithm (doesn't work, just oscillates between (0,0) and (1,0))
-        # dr = delta_row, dc = delta column
-        for direction, (dr, dc) in MOVES.items():
-            nr, nc = current[0] + dr, current[1] + dc
+          #Continue unraveling the path one step at a time until the current node is the start node
+          while came_from[current] is not None:
+              #Use came from dict to find the previous node we went through to get here 
+              previous = came_from[current]
+              #Find the direction travelled to get here.
+              diff = (current[0] - previous[0], current[1] - previous[1])
+              #Use TUPLE_TO_MOVE dict to find direction of travel
+              path.append(TUPLE_TO_MOVE[diff])
+              #Step one node back in time before we iterate again
+              current = previous
+          #Path is currently [target,...,start]. we need the opposite.
+          path.reverse()
+          return path
+
+        #A list of the neighbors of current
+        neighbors = []
+        #Grab all possible moves
+        for (d_row, d_col) in TUPLE_TO_MOVE.keys():
+            #Find new position if move were taken
+            nr, nc = current[0] + d_row, current[1] + d_col
+            #Filter out moves that move outside of the board or into an obstacle
             if 0 <= nr < len(grid) and 0 <= nc < len(grid[0]) and grid[nr][nc] != "#":
-                path.append(direction)
-                current = (nr, nc)
-                break
-    return path
+                #Add any moves that are valid
+                neighbors.append((nr,nc))
+
+        #Iterate through the neighbors list
+        for next_item in neighbors:
+            #filter for any items that have already been checked.
+            if next_item not in came_from.keys():
+                #Add neighbor to frontier
+                frontier.append(next_item)
+                #Denote that there was a step from current item -> next item
+                came_from[next_item] = current
+            
 
 
 if __name__ == "__main__":
