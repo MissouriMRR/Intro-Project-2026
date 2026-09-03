@@ -81,7 +81,7 @@ def a_star(grid, start, target, h):
             return reconstruct_path(came_from, current)
 
         for neighbor in adj(current, grid):
-            tenative_gScore = g_score[current]
+            tenative_gScore = g_score[current] + 1
             if neighbor not in g_score:
                 g_score[neighbor] = math.inf
             if tenative_gScore < g_score[neighbor]:
