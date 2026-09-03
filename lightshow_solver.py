@@ -34,13 +34,21 @@ MOVES = {
     "W": (0, -1),
 }
 
-
-def check_pos_validity(grid, row, col, row_max, col_max):
+def check_pos_bounds(row, col, row_max, col_max):
 
     if (row < 0) or (row >= row_max) or (col < 0) or (col >= col_max):
         return False
+
+    return True
+
+def check_pos_validity(grid, row, col, row_max, col_max):
+
+    if not check_pos_bounds(row, col, row_max, col_max):
+        return False
     if grid[row][col] == "#":
         return False
+
+    adjacent_obstacles = 0
 
     return True
 
