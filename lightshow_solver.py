@@ -91,8 +91,8 @@ def solve(grid, start, target):
 
     # https://www.geeksforgeeks.org/dsa/a-search-algorithm/ referenced
 
-    rows = 10
-    cols = 10
+    rows = len(grid)
+    cols = len(grid[0])
 
     dest_coord = (None, None)
 
@@ -145,8 +145,6 @@ def solve(grid, start, target):
                     cell_data[new_i][new_j]["parent_i"] = i
                     cell_data[new_i][new_j]["parent_j"] = j
 
-                    print("dest found")
-
                     path = trace_target_route(cell_data, dest_coord)
                     found = True
                     return path
@@ -169,7 +167,7 @@ def solve(grid, start, target):
                         cell_data[new_i][new_j]["parent_j"] = j
 
     if not found:
-        print("Failed to find destination")
+        return []
 
 
 if __name__ == "__main__":
