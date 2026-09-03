@@ -1,3 +1,5 @@
+from collections import deque
+
 """
 starter_solver.py
 TEAM NAME: <fill in your team name here>
