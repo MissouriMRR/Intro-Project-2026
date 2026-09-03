@@ -9,7 +9,9 @@ matchup needed.
 ## The idea
 
 - You get a grid map: `.` open airspace, `#` restricted airspace,
-  `S` start, `T` target/landing pad.
+  `S` start, `T` target/landing pad. Hard-mode maps also use digits
+  `1`–`9` (weighted airspace) and `*` (a mandatory waypoint) — a
+  standard solver can treat both as plain open airspace.
 - Write `solve(grid, start, target)` that returns a list of moves
   (`"N"`, `"S"`, `"E"`, `"W"`) that flies the drone from `S` to `T`
   without ever crossing a `#`.
@@ -60,11 +62,13 @@ Add `--delay 0.5` to slow the replay down, or `--no-color` for plain output.
 | File                                  | Purpose                                                                                                                                        |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `starter_solver.py`                   | **Start here.** Contains the interface + a placeholder that intentionally fails, so you can confirm the harness runs before writing real logic |
+| `starter_hard_solver.py`              | Same placeholder, but shows how to opt in to hard mode with a `MODIFIERS` list and how to find the `*` waypoints. Copy it if you want to compete in hard mode                              |
 | `map_utils.py`                        | Loads map files, shared move constants                                                                                                         |
 | `scorer.py`                           | Runs one or more solvers against a set of maps and prints a leaderboard                                                                        |
 | `visualize.py`                        | Draws the route your solver flew (direction arrows, revisits, crash point) with an optional step-by-step replay                                |
-| `gen_maps.py`                         | Generates maps with a guaranteed valid path — use it to make extra practice maps                                                               |
+| `gen_maps.py`                         | Generates maps (standard or `--mode hard`) with a guaranteed valid path — use it to make extra practice maps                                   |
 | `maps/practice_maps/practice_map.txt` | Use this map for testing as you develop your algorithm                                                                                         |
+| `maps/practice_maps/hard/`            | Hard-mode practice maps (weighted airspace + waypoints); not scored by the default practice glob                                               |
 
 The scoring maps live in `maps/scoring_maps/` and are revealed only at
 scoring time — this is what actually determines the leaderboard. Your
@@ -97,11 +101,81 @@ Run:
 uv run scorer.py <solver_team_1.py> <solver_team_2.py>
 ```
 
-Default scoring per map: `+100` if the drone reaches the target, minus
-path length, minus `runtime * 10`.
-Completed Map Scoring: 100 - path_length - (runtime_seconds \* 10)
+Scoring is **relative to the best solver in the round**. On each map every
+team gets a raw score:
+
+```
+raw = 100 * (optimal_cost / your_cost) / (1 + runtime_seconds)
+```
+
+`optimal_cost` is the cost of the best route the scorer can find; `your_cost`
+is your path length (see hard mode for how cost changes there). Because the
+scorer's route is optimal, `optimal_cost / your_cost` is always between 0 and
+1: `1.0` means you matched the best route, `0.5` means yours cost twice as
+much. Reaching the target on the shortest path with a fast solver gives `raw`
+near 100; not reaching it gives 0. Your points for that map are then
+`your_raw / best_raw_on_that_map`, so a route 5% better than everyone
+else's is a 5% edge. Points are summed across all maps.
+
 There's a 5-second time limit per map (`TIME_LIMIT_SECONDS` in
-`scorer.py`).
+`scorer.py`). A plain BFS shortest-path solver scores well in standard
+mode — to pull ahead you need hard mode.
+
+## Hard mode
+
+Standard mode has one right answer (shortest path), so the leaderboard
+bunches up. Hard mode adds a second pool of maps with extra structure and
+lets each team **opt in** to scoring against it for a shot at more points.
+
+Enable it by adding a module-level `MODIFIERS` list to your solver file:
+
+```python
+MODIFIERS = ["terrain", "risk", "waypoints"]  # any subset; omit for standard only
+```
+
+Each modifier you enable multiplies your score on every hard map, and
+they stack — but each one also adds a constraint you can fail. Hard maps
+use two extra characters: digits `1`–`9` (weighted airspace) and `*`
+(a mandatory waypoint).
+
+On a hard map a plain `.` is just weighted airspace of cost `1` — it and a
+`1` cell are identical to fly into. `S`, `T`, and `*` also cost `1` to
+enter. Only digits `2`–`9` cost more.
+
+| Modifier    | What changes                                                                                        | Bonus | Fail condition & cost                              |
+| ----------- | --------------------------------------------------------------------------------------------------- | ----- | -------------------------------------------------- |
+| `terrain`   | Flying into a digit cell costs that many energy units (not 1). Your cost is measured in **energy**. | ×1.35 | Energy over `1.6 × optimal` → score ×0.4               |
+| `risk`      | Every cell flown through that touches a `#` adds `+2` cost per adjacent `#`.                        | ×1.25 | Flying through a cell touching ≥3 `#` → score ×0.4 |
+| `waypoints` | The drone must fly over every `*` before landing on `T`. Visiting order is yours to choose.         | ×1.50 | Miss any `*` → **0 for that map**                  |
+
+So a team that enables all three and flies a near-optimal waypoint tour
+within budget scores about `100 × 1.35 × 1.25 × 1.5 ≈ 253` on a hard map,
+versus `~100` for a plain BFS run — but one missed waypoint zeros the map,
+and a disciplined BFS team that never gambles can win the round if the
+ambitious teams stumble.
+
+Modifiers only ever apply on the hard pool. Standard maps are always
+scored plain, for everyone. A no-`MODIFIERS` solver still runs on hard
+maps (it just can't earn the bonuses, and it ignores the `*` cells).
+
+Copy `starter_hard_solver.py` as your starting point - it already has the
+`MODIFIERS` line and shows how to pull the `*` waypoints out of the grid.
+
+Practice against a hard map you generate yourself, then score with
+`--hard-maps`:
+
+```bash
+uv run gen_maps.py --mode hard --out maps/practice_maps/hard/h1.txt --seed 7
+uv run scorer.py my_solver.py --hard-maps "maps/practice_maps/hard/*.txt"
+```
+
+At the competition:
+
+```bash
+uv run scorer.py teams/*.py \
+    --maps "maps/scoring_maps/*.txt" \
+    --hard-maps "maps/scoring_maps_hard/*.txt"
+```
 
 ## 3 Meeting Plan
 
@@ -133,6 +207,17 @@ uv run gen_maps.py --out maps/practice_maps/my_map.txt --seed 42
 uv run gen_maps.py --out maps/practice_maps/big.txt --height 30 --width 30 --wall-prob 0.3
 ```
 
-Every generated map is BFS-verified to have at least one valid path, so
-you can never get stuck on an unsolvable map. Running `uv run gen_maps.py`
-with no arguments rewrites the stock practice map in place.
+For hard-mode practice maps, add `--mode hard` (and optionally
+`--waypoints N`, 1–4). Use `--count N` with a directory `--out` to make a
+whole numbered pool at once:
+
+```bash
+uv run gen_maps.py --mode hard --out maps/practice_maps/hard/h1.txt --seed 7
+uv run gen_maps.py --mode hard --out maps/practice_maps/hard --count 5 --seed 200
+```
+
+Every generated map is verified to have at least one valid path, so you
+can never get stuck on an unsolvable map. Hard maps are checked further:
+every waypoint is reachable, and a route that respects the risk cap
+exists. Running `uv run gen_maps.py` with no arguments rewrites the stock
+practice map in place.
