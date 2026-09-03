@@ -62,6 +62,7 @@ Add `--delay 0.5` to slow the replay down, or `--no-color` for plain output.
 | File                                  | Purpose                                                                                                                                        |
 | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `starter_solver.py`                   | **Start here.** Contains the interface + a placeholder that intentionally fails, so you can confirm the harness runs before writing real logic |
+| `starter_hard_solver.py`              | Same placeholder, but shows how to opt in to hard mode with a `MODIFIERS` list and how to find the `*` waypoints. Copy it if you want to compete in hard mode                              |
 | `map_utils.py`                        | Loads map files, shared move constants                                                                                                         |
 | `scorer.py`                           | Runs one or more solvers against a set of maps and prints a leaderboard                                                                        |
 | `visualize.py`                        | Draws the route your solver flew (direction arrows, revisits, crash point) with an optional step-by-step replay                                |
@@ -104,13 +105,15 @@ Scoring is **relative to the best solver in the round**. On each map every
 team gets a raw score:
 
 ```
-raw = 100 * (par_cost / your_cost) / (1 + runtime_seconds)
+raw = 100 * (optimal_cost / your_cost) / (1 + runtime_seconds)
 ```
 
-`par_cost` is the cost of the best route the scorer can find; `your_cost`
-is your path length (see hard mode for how cost changes there). Reaching
-the target on the shortest path with a fast solver gives `raw` near 100;
-not reaching it gives 0. Your points for that map are then
+`optimal_cost` is the cost of the best route the scorer can find; `your_cost`
+is your path length (see hard mode for how cost changes there). Because the
+scorer's route is optimal, `optimal_cost / your_cost` is always between 0 and
+1: `1.0` means you matched the best route, `0.5` means yours cost twice as
+much. Reaching the target on the shortest path with a fast solver gives `raw`
+near 100; not reaching it gives 0. Your points for that map are then
 `your_raw / best_raw_on_that_map`, so a route 5% better than everyone
 else's is a 5% edge. Points are summed across all maps.
 
@@ -135,9 +138,13 @@ they stack — but each one also adds a constraint you can fail. Hard maps
 use two extra characters: digits `1`–`9` (weighted airspace) and `*`
 (a mandatory waypoint).
 
+On a hard map a plain `.` is just weighted airspace of cost `1` — it and a
+`1` cell are identical to fly into. `S`, `T`, and `*` also cost `1` to
+enter. Only digits `2`–`9` cost more.
+
 | Modifier    | What changes                                                                                        | Bonus | Fail condition & cost                              |
 | ----------- | --------------------------------------------------------------------------------------------------- | ----- | -------------------------------------------------- |
-| `terrain`   | Flying into a digit cell costs that many energy units (not 1). Your cost is measured in **energy**. | ×1.35 | Energy over `1.6 × par` → score ×0.4               |
+| `terrain`   | Flying into a digit cell costs that many energy units (not 1). Your cost is measured in **energy**. | ×1.35 | Energy over `1.6 × optimal` → score ×0.4               |
 | `risk`      | Every cell flown through that touches a `#` adds `+2` cost per adjacent `#`.                        | ×1.25 | Flying through a cell touching ≥3 `#` → score ×0.4 |
 | `waypoints` | The drone must fly over every `*` before landing on `T`. Visiting order is yours to choose.         | ×1.50 | Miss any `*` → **0 for that map**                  |
 
@@ -150,6 +157,9 @@ ambitious teams stumble.
 Modifiers only ever apply on the hard pool. Standard maps are always
 scored plain, for everyone. A no-`MODIFIERS` solver still runs on hard
 maps (it just can't earn the bonuses, and it ignores the `*` cells).
+
+Copy `starter_hard_solver.py` as your starting point - it already has the
+`MODIFIERS` line and shows how to pull the `*` waypoints out of the grid.
 
 Practice against a hard map you generate yourself, then score with
 `--hard-maps`:

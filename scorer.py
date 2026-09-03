@@ -57,7 +57,7 @@ MODIFIER_BONUS = {"terrain": 1.35, "risk": 1.25, "waypoints": 1.5}
 # "violation" - it scores the map as 0.
 VIOLATION_FACTOR = 0.4
 
-# 'terrain' route may cost up to this * par before it counts as over budget.
+# 'terrain' route may cost up to this * optimal before it counts as over budget.
 ENERGY_BUDGET_SLACK = 1.6
 
 # Flying through a cell that touches this many '#' breaks the risk cap.
@@ -158,11 +158,11 @@ def validate_path(grid, start, target, moves, modifiers=frozenset(), waypoints=(
     return result
 
 
-# --- reference (par) solver -------------------------------------------------
+# --- reference (optimal-cost) solver --------------------------------------
 def _min_costs(grid, src, modifiers):
     """Dijkstra: least scoring cost from `src` to every reachable cell,
     under `modifiers`. Cells that break the risk cap are excluded when
-    'risk' is active, so par is always a legal route."""
+    'risk' is active, so the optimal route is always legal."""
     dist: dict[tuple[int, int], int] = {src: 0}
     pq: list[tuple[int, tuple[int, int]]] = [(0, src)]
     risk_on = "risk" in modifiers
@@ -183,7 +183,7 @@ def _min_costs(grid, src, modifiers):
     return dist
 
 
-def par_cost(grid, start, target, waypoints, modifiers):
+def optimal_cost(grid, start, target, waypoints, modifiers):
     """Best achievable scoring cost on this map for the given modifier set.
 
     Without 'waypoints' this is just the cheapest S -> T route. With it,
@@ -212,7 +212,7 @@ def par_cost(grid, start, target, waypoints, modifiers):
 
 
 # --- scoring -------------------------------------------------------------
-def effective_score(result, par, modifiers, runtime):
+def effective_score(result, optimal, modifiers, runtime):
     """Raw (un-normalised) score for one team on one map."""
     if not result["success"]:
         return 0.0
@@ -222,8 +222,8 @@ def effective_score(result, par, modifiers, runtime):
     uses_energy = bool(modifiers & {"terrain", "risk"})
     your_cost = max(result["energy"] if uses_energy else result["path_length"], 1)
 
-    if par < INF and par > 0:
-        quality = min(1.0, par / your_cost)
+    if optimal < INF and optimal > 0:
+        quality = min(1.0, optimal / your_cost)
     else:
         quality = 1.0 if your_cost <= 1 else 1.0 / your_cost
 
@@ -231,7 +231,7 @@ def effective_score(result, par, modifiers, runtime):
     for m in modifiers:
         score *= MODIFIER_BONUS[m]
 
-    if "terrain" in modifiers and par < INF and your_cost > ENERGY_BUDGET_SLACK * par:
+    if "terrain" in modifiers and optimal < INF and your_cost > ENERGY_BUDGET_SLACK * optimal:
         score *= VIOLATION_FACTOR
     if "risk" in modifiers and result["risk_cap_hit"]:
         score *= VIOLATION_FACTOR
@@ -305,7 +305,7 @@ def score_round(teams, standard_maps, hard_maps):
     for map_path, is_hard in jobs:
         grid, start, target, waypoints = load_map_ex(map_path)
         map_active = active_modifiers(grid) if is_hard else frozenset()
-        par_cache: dict[frozenset[str], float] = {}
+        optimal_cache: dict[frozenset[str], float] = {}
 
         rows = []
         for name, solve_fn, mods in teams:
@@ -313,19 +313,19 @@ def score_round(teams, standard_maps, hard_maps):
             req_wps = tuple(waypoints) if "waypoints" in eff_mods else ()
             run = run_solver_on_map(solve_fn, grid, start, target, eff_mods, req_wps)
             if run["ok"]:
-                if eff_mods not in par_cache:
-                    par_cache[eff_mods] = par_cost(
+                if eff_mods not in optimal_cache:
+                    optimal_cache[eff_mods] = optimal_cost(
                         grid, start, target, waypoints, eff_mods
                     )
-                par = par_cache[eff_mods]
-                eff = effective_score(run["result"], par, eff_mods, run["runtime"])
+                optimal = optimal_cache[eff_mods]
+                eff = effective_score(run["result"], optimal, eff_mods, run["runtime"])
             else:
-                par = INF
+                optimal = INF
                 eff = 0.0
-            rows.append((name, eff, par, eff_mods, run))
+            rows.append((name, eff, optimal, eff_mods, run))
 
         best = max((eff for _, eff, _, _, _ in rows), default=0.0)
-        for name, eff, par, eff_mods, run in rows:
+        for name, eff, optimal, eff_mods, run in rows:
             pts = eff / best if best > 0 else 0.0
             points[name] += pts
             res = run.get("result", {})
@@ -333,7 +333,7 @@ def score_round(teams, standard_maps, hard_maps):
                 "hard": is_hard,
                 "points": pts,
                 "effective": eff,
-                "par": par,
+                "optimal": optimal,
                 "modifiers": sorted(eff_mods),
                 "runtime": run["runtime"],
                 "error": run["error"],
@@ -430,12 +430,12 @@ def main():
                 flags.append(f"wp {r['waypoints_hit']}/{r['waypoints_total']}")
             if r["risk_cap_hit"] and "risk" in r["modifiers"]:
                 flags.append("RISK-CAP")
-            par = r["par"]
-            par_str = f"{par:.0f}" if par not in (INF, None) else "-"
+            optimal = r["optimal"]
+            optimal_str = f"{optimal:.0f}" if optimal not in (INF, None) else "-"
             print(
                 f"  [{tag}] {Path(map_path).name:22s} [{status}] "
                 f"len={r['path_length']!s:>3} energy={r['energy']!s:>4} "
-                f"par={par_str:>4} eff={r['effective']:7.2f} "
+                f"optimal={optimal_str:>4} eff={r['effective']:7.2f} "
                 f"pts={r['points']:.3f} t={r['runtime']:.3f}s " + " ".join(flags)
             )
 
