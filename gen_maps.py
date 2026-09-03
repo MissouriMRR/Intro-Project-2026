@@ -15,7 +15,7 @@ Hard-mode practice map (adds weighted airspace + delivery waypoints):
     uv run gen_maps.py --mode hard --out maps/practice_maps/hard/h1.txt --seed 7
 
 A numbered pool at once (--out is a directory when --count > 1):
-    uv run gen_maps.py --mode hard --out maps/scoring_maps_hard --count 6 --seed 100
+    uv run gen_maps.py --mode hard --out maps/practice_maps/hard --count 6 --seed 100
 
 Regenerate the stock practice map:
     uv run gen_maps.py
