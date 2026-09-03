@@ -1,7 +1,7 @@
 import heapq
 
 """
-starter_hard_solver.py
+lightshow_hard_solver.py
 TEAM NAME: Lightshow team
 
 Same idea as starter_solver.py, but this file also opts in to **hard
