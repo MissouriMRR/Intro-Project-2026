@@ -10,14 +10,24 @@ projector during the demo meeting.
 Usage:
     uv run visualize.py <solver_file.py> <map_file.txt> [options]
 
+Hard mode is picked up automatically: if the map has terrain digits or
+'*' waypoints, weighted cells and waypoints are drawn, and the summary
+reports energy vs optimal, the risk cap, and waypoint coverage. Which
+rules are actually enforced follows the solver's MODIFIERS (same as the
+scorer); pass --hard to force every modifier the map exercises.
+
 Options:
     --animate         replay the flight one step at a time
     --delay SECONDS   time between animation frames (default 0.25)
     --no-color        plain ASCII output (for logs / redirected output)
+    --hard            enable every modifier the map exercises, ignoring
+                      the solver's declared MODIFIERS
 
 Examples:
     uv run visualize.py starter_solver.py maps/practice_maps/practice_map.txt
     uv run visualize.py starter_solver.py maps/practice_maps/practice_map.txt --animate
+    uv run visualize.py sample_solvers/hard_reckless.py maps/scoring_maps_hard/hard_01.txt
+    uv run visualize.py sample_solvers/normal_bfs.py maps/scoring_maps_hard/hard_01.txt --hard
 """
 
 import argparse
@@ -25,8 +35,16 @@ import os
 import sys
 import time
 
-from map_utils import MOVES, load_map
-from scorer import load_solver, validate_path
+from map_utils import MOVES, load_map_ex, wall_count
+from scorer import (
+    ENERGY_BUDGET_SLACK,
+    INF,
+    RISK_CAP_WALLS,
+    active_modifiers,
+    load_team,
+    optimal_cost,
+    validate_path,
+)
 
 # Direction glyphs, drawn on the cell the drone was leaving.
 ARROWS = {"N": "^", "S": "v", "E": ">", "W": "<"}
@@ -52,6 +70,22 @@ class Palette:
         self.crash = code("\033[1;97;41m")
         self.dim = code("\033[2m")
         self.bold = code("\033[1m")
+        self.waypoint = code("\033[1;35m")  # unvisited mandatory '*' waypoint
+        self.weight_lo = code("\033[2;33m")  # terrain cost 2-3
+        self.weight_mid = code("\033[33m")  # terrain cost 4-6
+        self.weight_hi = code("\033[1;31m")  # terrain cost 7-9
+
+
+def weight_glyph(pal, ch):
+    """Draw a terrain-cost digit, tinted by how expensive the cell is."""
+    n = int(ch)
+    if n <= 3:
+        color = pal.weight_lo
+    elif n <= 6:
+        color = pal.weight_mid
+    else:
+        color = pal.weight_hi
+    return f"{color}{ch}{pal.reset}"
 
 
 def enable_ansi():
@@ -145,13 +179,18 @@ def render(
                 cells.append(f"{pal.trail}o{pal.reset}")
             elif ch == "#":
                 cells.append(f"{pal.wall}#{pal.reset}")
+            elif ch == "*":
+                # Only reached for waypoints the drone never flew over.
+                cells.append(f"{pal.waypoint}*{pal.reset}")
+            elif ch.isdigit():
+                cells.append(weight_glyph(pal, ch))
             else:
                 cells.append(f"{pal.open}.{pal.reset}")
         out.append(f"{pal.dim}{r % 10:>3}{pal.reset} " + " ".join(cells))
     return "\n".join(out)
 
 
-def legend(pal):
+def legend(pal, grid=None):
     parts = [
         f"{pal.start}S{pal.reset} start",
         f"{pal.target}T{pal.reset} target",
@@ -161,6 +200,11 @@ def legend(pal):
         f"{pal.wall}#{pal.reset} restricted",
         f"{pal.crash}X{pal.reset} crash",
     ]
+    flat = "".join("".join(row) for row in grid) if grid else ""
+    if "*" in flat:
+        parts.append(f"{pal.waypoint}*{pal.reset} waypoint (unvisited)")
+    if any(ch.isdigit() for ch in flat):
+        parts.append(f"{pal.weight_mid}2-9{pal.reset} terrain cost")
     return f"{pal.dim}Legend:{pal.reset} " + "   ".join(parts)
 
 
@@ -203,6 +247,80 @@ def summary(result, target, pal, bad_move, blocked_cell, reason):
     return "\n".join(lines)
 
 
+def hard_report(grid, start, target, waypoints, result, eff_mods, declared_mods,
+                map_mods, forced, pal):
+    """Hard-mode read-out: energy vs optimal, the risk cap, and waypoint
+    coverage. Returns None on a map that exercises no hard-mode feature, so
+    standard runs print exactly what they always did."""
+    if not map_mods and not waypoints:
+        return None
+
+    def cells(seq):
+        return ", ".join(f"({r},{c})" for r, c in seq)
+
+    lines = [f"{pal.bold}Hard mode{pal.reset}"]
+    tail = f"  {pal.dim}(forced by --hard){pal.reset}" if forced else ""
+    lines.append(f"  modifiers   : {', '.join(sorted(eff_mods)) or 'none'}{tail}")
+    if not forced and declared_mods != eff_mods:
+        lines.append(
+            f"  declared    : {', '.join(sorted(declared_mods)) or 'none'}"
+            f"   map exercises: {', '.join(sorted(map_mods)) or 'none'}"
+        )
+
+    optimal = optimal_cost(grid, start, target, waypoints, eff_mods)
+    uses_energy = bool(eff_mods & {"terrain", "risk"})
+    metric = "energy" if uses_energy else "steps"
+    your_cost = result["energy"] if uses_energy else result["path_length"]
+    if optimal not in (INF, None) and optimal > 0:
+        lines.append(
+            f"  {metric:<11} : {your_cost}   optimal: {optimal:.0f}"
+            f"   ({your_cost / optimal:.2f}x)"
+        )
+    else:
+        lines.append(f"  {metric:<11} : {your_cost}   optimal: -")
+
+    if "terrain" in eff_mods and optimal not in (INF, None):
+        over = your_cost > ENERGY_BUDGET_SLACK * optimal
+        verdict = (
+            f"{pal.crash}OVER BUDGET{pal.reset} "
+            f"(> {ENERGY_BUDGET_SLACK:g}x optimal -> score x0.4)"
+            if over
+            else "within budget"
+        )
+        lines.append(f"  terrain     : {verdict}")
+
+    if "risk" in eff_mods:
+        skimmed = [p for p in result["visited"] if wall_count(grid, p) >= RISK_CAP_WALLS]
+        if skimmed:
+            head = skimmed[:6]
+            more = "" if len(skimmed) <= 6 else f" +{len(skimmed) - 6} more"
+            lines.append(
+                f"  risk cap    : {pal.crash}HIT{pal.reset} - {len(skimmed)} cell(s) "
+                f"touch >={RISK_CAP_WALLS} '#' -> score x0.4: {cells(head)}{more}"
+            )
+        else:
+            lines.append("  risk cap    : clear")
+
+    if waypoints:
+        seen = set(result["visited"])
+        missing = [w for w in waypoints if w not in seen]
+        hit = len(waypoints) - len(missing)
+        if "waypoints" in eff_mods:
+            note = ""
+            miss = f"   {pal.crash}MISSING{pal.reset}: {cells(missing)}" if missing else ""
+        else:
+            note = "   (not enforced - 'waypoints' modifier off)"
+            miss = f"   missing: {cells(missing)}" if missing else ""
+        lines.append(f"  waypoints   : {hit}/{len(waypoints)} hit{note}{miss}")
+
+    if not declared_mods and not forced:
+        lines.append(
+            f"  {pal.dim}note: solver declares no MODIFIERS; "
+            f"figures above are informational{pal.reset}"
+        )
+    return "\n".join(lines)
+
+
 def clear_screen(pal):
     if pal.enabled:
         sys.stdout.write("\033[H\033[J")
@@ -223,7 +341,7 @@ def animate(grid, visited, moves, start, target, pal, delay, crash_cell):
         print()
         print(render(grid, visited, start, target, pal, upto=step + 1, drone_cell=pos))
         print()
-        print(legend(pal))
+        print(legend(pal, grid))
         sys.stdout.flush()
         if step < total or crash_cell is not None:
             time.sleep(delay)
@@ -246,7 +364,7 @@ def animate(grid, visited, moves, start, target, pal, delay, crash_cell):
             )
         )
         print()
-        print(legend(pal))
+        print(legend(pal, grid))
 
 
 def main():
@@ -262,15 +380,29 @@ def main():
         "--delay", type=float, default=0.25, help="Seconds between animation frames"
     )
     parser.add_argument("--no-color", action="store_true", help="Disable ANSI color")
+    parser.add_argument(
+        "--hard",
+        action="store_true",
+        help="Enable every modifier the map exercises, ignoring the solver's MODIFIERS",
+    )
     args = parser.parse_args()
 
     enable_ansi()
     pal = Palette(color_enabled(args.no_color))
 
-    grid, start, target = load_map(args.map_file)
-    solve_fn = load_solver(args.solver_file)
+    grid, start, target, waypoints = load_map_ex(args.map_file)
+    solve_fn, declared_mods = load_team(args.solver_file)
+
+    # The scorer only applies modifiers on the hard-map pool. The visualizer
+    # has no pool, so treat a map as hard when it actually uses a hard-mode
+    # feature: terrain digits or '*' waypoints ('#' alone is just a wall).
+    is_hard_map = bool(waypoints) or any(ch.isdigit() for row in grid for ch in row)
+    map_mods = active_modifiers(grid) if is_hard_map else frozenset()
+    eff_mods = map_mods if args.hard else (declared_mods & map_mods)
+    req_wps = tuple(waypoints) if "waypoints" in eff_mods else ()
+
     moves = solve_fn(grid, start, target)
-    result = validate_path(grid, start, target, moves)
+    result = validate_path(grid, start, target, moves, eff_mods, req_wps)
 
     bad_move, blocked_cell, reason = crash_info(
         grid, result["visited"], moves, result["crashed"]
@@ -293,13 +425,21 @@ def main():
             render(grid, result["visited"], start, target, pal, crash_cell=crash_cell)
         )
         print()
-        print(legend(pal))
+        print(legend(pal, grid))
         print()
         print(f"{pal.bold}Flight log{pal.reset}")
         print(step_log(result["visited"], moves, pal))
         print()
 
     print(summary(result, target, pal, bad_move, blocked_cell, reason))
+
+    report = hard_report(
+        grid, start, target, waypoints, result, eff_mods, declared_mods,
+        map_mods, args.hard, pal,
+    )
+    if report:
+        print()
+        print(report)
 
 
 if __name__ == "__main__":
