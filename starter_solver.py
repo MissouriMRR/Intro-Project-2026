@@ -15,7 +15,10 @@ Rules:
   unless your instructor says otherwise).
 - Do not hardcode answers to the specific practice map — your solver
   will be run against maps you haven't seen.
-
+- Optional: to compete in hard mode, add a module-level
+  `MODIFIERS = ["terrain", "risk", "waypoints"]` (any subset) and handle
+  weighted `1`-`9` cells and mandatory `*` waypoints. See
+  PROJECT_README.md ("Hard mode"). Leave it out to stay in standard mode.
 grid:   list of lists of characters ('.', '#', 'S', 'T')
 start:  (row, col) tuple
 target: (row, col) tuple
@@ -33,12 +36,6 @@ MOVES = {
 
 
 def solve(grid, start, target):
-    # -----------------------------------------------------------
-    # REPLACE THIS with your own pathfinding logic (BFS, DFS,
-    # A*, whatever your team wants to try). This placeholder just
-    # proves the interface works: it does NOT reliably reach the
-    # target and will fail on most maps.
-    # -----------------------------------------------------------
     path = []
     current = start
     for _ in range(10):
