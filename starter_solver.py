@@ -15,7 +15,10 @@ Rules:
   unless your instructor says otherwise).
 - Do not hardcode answers to the specific practice map — your solver
   will be run against maps you haven't seen.
-
+- Optional: to compete in hard mode, add a module-level
+  `MODIFIERS = ["terrain", "risk", "waypoints"]` (any subset) and handle
+  weighted `1`-`9` cells and mandatory `*` waypoints. See
+  PROJECT_README.md ("Hard mode"). Leave it out to stay in standard mode.
 grid:   list of lists of characters ('.', '#', 'S', 'T')
 start:  (row, col) tuple
 target: (row, col) tuple
