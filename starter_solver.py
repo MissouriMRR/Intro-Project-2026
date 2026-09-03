@@ -47,7 +47,7 @@ def adj(current, grid):
     o = []
     for _,move in MOVES.items():
         temp = (current[0]+move[0], current[1]+move[1])
-        if (in_bounds(grid, current) and is_open(grid, current)):
+        if (in_bounds(grid, temp) and is_open(grid, temp)):
             o.append(temp)
     return o
 
@@ -88,8 +88,7 @@ def a_star(grid, start, target, h):
                 came_from[neighbor] = current
                 g_score[neighbor] = tenative_gScore
                 f_score[neighbor] = tenative_gScore + h(neighbor, target)
-                if neighbor not in open_set:
-                    heapq.heappush(open_set, (f_score[neighbor], neighbor))
+                heapq.heappush(open_set, (f_score[neighbor], neighbor))
 
     return "No Path"
 
