@@ -18,7 +18,8 @@ Rules:
 - Optional: to compete in hard mode, add a module-level
   `MODIFIERS = ["terrain", "risk", "waypoints"]` (any subset) and handle
   weighted `1`-`9` cells and mandatory `*` waypoints. See
-  PROJECT_README.md ("Hard mode"). Leave it out to stay in standard mode.
+  `starter_hard_solver.py` for the setup and PROJECT_README.md
+  ("Hard mode") for the rules. Leave it out to stay in standard mode.
 grid:   list of lists of characters ('.', '#', 'S', 'T')
 start:  (row, col) tuple
 target: (row, col) tuple
