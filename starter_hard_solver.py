@@ -93,15 +93,17 @@ def reconstruct_path(came_from, current, grid):
         total_path.append(current)
     total_path.reverse()
     output = []
-    cost = 1
+    cost = 0
     for i in range(len(total_path)-1):
         r1,c1 = total_path[i]
         r2,c2 = total_path[i+1]
         cell2 = grid[r2][c2]
         weight = int(cell2) if grid[r2][c2].isnumeric() else 1
+        if wall_count((r2,c2),grid):
+            weight+=2
         output.append(MOVESREV[f"{r2-r1}{c2-c1}"])
-        cost+=1
-    print(output)
+        cost+=weight
+    print(cost)
     return output, cost
 
 def a_star(grid, start, target, h):
@@ -164,8 +166,8 @@ def solve(grid, start, target):
     #            current = (nr, nc)
     #            break
     #return path
-    return a_star(grid, start, target, manhattan)
-
+    path, cost = a_star(grid, start, target, manhattan)
+    return path
 
 if __name__ == "__main__":
     # Quick local test against the hard practice map.
