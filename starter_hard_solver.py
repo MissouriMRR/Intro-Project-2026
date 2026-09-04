@@ -49,7 +49,7 @@ import heapq, math
 
 # Opt in to hard mode. Trim this list to just the modifiers you actually
 # handle - claiming one you break costs you points.
-MODIFIERS = ["terrain", "risk", "waypoints"]
+MODIFIERS = ["terrain", "risk"]#["terrain", "risk", "waypoints"]
 
 MOVES = {
     "N": (-1, 0),
@@ -73,7 +73,13 @@ def adj(current, grid):
     for _,move in MOVES.items():
         temp = (current[0]+move[0], current[1]+move[1])
         if (in_bounds(grid, temp) and is_open(grid, temp)):
-            o.append(temp)
+            count = 0
+            for _,move2 in MOVES.items():
+                temp2 = (temp[0]+move2[0], temp[1]+move2[1])
+                if (in_bounds(grid, temp2) and grid[temp2[0]][temp2[1]]=='#'):
+                    count+=1
+            if count<2:
+                o.append(temp)
     return o
 
 def reconstruct_path(came_from, current):
@@ -106,7 +112,11 @@ def a_star(grid, start, target, h):
             return reconstruct_path(came_from, current)
 
         for neighbor in adj(current, grid):
-            tenative_gScore = g_score[current] + 1
+            weight = 1
+            r,c = neighbor
+            if (grid[r][c]).isnumeric():
+                weight = int(grid[r][c])
+            tenative_gScore = g_score[current] + weight
             if neighbor not in g_score:
                 g_score[neighbor] = math.inf
             if tenative_gScore < g_score[neighbor]:
