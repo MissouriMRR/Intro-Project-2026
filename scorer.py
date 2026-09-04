@@ -61,7 +61,7 @@ VIOLATION_FACTOR = 0.4
 ENERGY_BUDGET_SLACK = 1.6
 
 # Flying through a cell that touches this many '#' breaks the risk cap.
-RISK_CAP_WALLS = 3
+RISK_CAP_WALLS = 2
 # Scoring cost added per adjacent '#', for every fringe cell flown through.
 RISK_PER_ADJACENT_WALL = 2
 
@@ -181,6 +181,7 @@ def _min_costs(grid, src, modifiers):
                 dist[v] = nd
                 heapq.heappush(pq, (nd, v))
     return dist
+
 
 
 def optimal_cost(grid, start, target, waypoints, modifiers):

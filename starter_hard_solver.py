@@ -68,16 +68,20 @@ MOVESREV = {
 def manhattan(current, target):
     return abs(current[0] - target[0]) + abs(current[1] - target[1])
 
+def wall_count(adj, grid):
+    count = 0
+    for _,move2 in MOVES.items():
+        temp2 = (adj[0]+move2[0], adj[1]+move2[1])
+        if (in_bounds(grid, temp2) and grid[temp2[0]][temp2[1]]=='#'):
+            count+=1
+    return count
+
 def adj(current, grid):
     o = []
     for _,move in MOVES.items():
         temp = (current[0]+move[0], current[1]+move[1])
         if (in_bounds(grid, temp) and is_open(grid, temp)):
-            count = 0
-            for _,move2 in MOVES.items():
-                temp2 = (temp[0]+move2[0], temp[1]+move2[1])
-                if (in_bounds(grid, temp2) and grid[temp2[0]][temp2[1]]=='#'):
-                    count+=1
+            count = wall_count(temp, grid)
             if count<2:
                 o.append(temp)
     return o
@@ -116,6 +120,8 @@ def a_star(grid, start, target, h):
             r,c = neighbor
             if (grid[r][c]).isnumeric():
                 weight = int(grid[r][c])
+            if (wall_count(neighbor, grid)):
+                weight+=2
             tenative_gScore = g_score[current] + weight
             if neighbor not in g_score:
                 g_score[neighbor] = math.inf
