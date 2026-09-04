@@ -68,8 +68,6 @@ def load_map(path):
                 if target is not None:
                     raise MapError(f"Multiple target positions found in {path}")
                 target = (r, c)
-            else:
-                grid[r][c] = "."
 
     if start is None:
         raise MapError(f"No start (S) found in {path}")
