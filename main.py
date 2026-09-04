@@ -1,9 +1,8 @@
 import map_utils
 def main():
     grid,start,end = map_utils.load_map("maps/practice_maps/practice_map.txt")
-    print(solve(grid,start,end))
 
-def solve(grid,start,finish):
+def bfs(grid,start,finish):
     queue = [[start]] #Create a list of paths
     while queue: #run while there are paths to check
         path = queue.pop(0) #get the next path to check
