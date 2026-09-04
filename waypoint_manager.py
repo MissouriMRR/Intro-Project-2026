@@ -36,7 +36,7 @@ class WaypointManager:
             nodes_searched.append(currentPoint)
             # add the connections to the move_dict
             for target in targets:
-                moves = s.path_solver.solve(currentPoint, target)
+                moves = s.path_solver.solve_terrian_path(currentPoint, target)
                 if target == s.start:
                     s.move_dict[i][-2] = moves
                     s.move_dict[-2][i] = s.move_flipper(moves)
@@ -174,7 +174,7 @@ class WaypointManager:
                 for move in s.move_dict[node_order[i]][node_order[i+1]]:
                     total_moves.append(move)
             return total_moves
-        return s.path_solver.solve(s.start, s.end)
+        return s.path_solver.solve_terrian_path(s.start, s.end)
 
 
 
