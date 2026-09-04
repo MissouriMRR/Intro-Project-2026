@@ -44,10 +44,12 @@ The waypoint cells are not passed in - scan the grid for '*' yourself:
 
 Return a list of "N"/"S"/"E"/"W" moves, exactly like the standard solver.
 """
+from map_utils import in_bounds, is_open
+import heapq, math
 
 # Opt in to hard mode. Trim this list to just the modifiers you actually
 # handle - claiming one you break costs you points.
-MODIFIERS = ["terrain", "risk", "waypoints"]
+MODIFIERS = ["terrain", "risk"]#["terrain", "risk", "waypoints"]
 
 MOVES = {
     "N": (-1, 0),
@@ -56,24 +58,107 @@ MOVES = {
     "W": (0, -1),
 }
 
+MOVESREV = {
+    "-10" : "N",
+    "10" : "S",
+    "01" : "E",
+    "0-1" : "W"
+}
+
+def manhattan(current, target):
+    return abs(current[0] - target[0]) + abs(current[1] - target[1])
+
+def wall_count(adj, grid):
+    count = 0
+    for _,move2 in MOVES.items():
+        temp2 = (adj[0]+move2[0], adj[1]+move2[1])
+        if (in_bounds(grid, temp2) and grid[temp2[0]][temp2[1]]=='#'):
+            count+=1
+    return count
+
+def adj(current, grid):
+    o = []
+    for _,move in MOVES.items():
+        temp = (current[0]+move[0], current[1]+move[1])
+        if (in_bounds(grid, temp) and is_open(grid, temp)):
+            count = wall_count(temp, grid)
+            if count<2:
+                o.append(temp)
+    return o
+
+def reconstruct_path(came_from, current):
+    total_path = [current]
+    while current in came_from.keys():
+        current = came_from[current]
+        total_path.append(current)
+    total_path.reverse()
+    output = []
+    for i in range(len(total_path)-1):
+        output.append(MOVESREV[f"{total_path[i+1][0]-total_path[i][0]}{total_path[i+1][1]-total_path[i][1]}"])
+    print(output)
+    return output
+
+def a_star(grid, start, target, h):
+    open_set = [(0, start)]
+    heapq.heapify(open_set)
+
+    came_from = dict()
+
+    g_score = dict()  # default values should be INF
+    g_score[start] = 0
+
+    f_score = dict()  # default values should be INF
+    f_score[start] = h(start, target)
+
+    while open_set:
+        current = heapq.heappop(open_set)[1]
+        if current == target:
+            return reconstruct_path(came_from, current)
+
+        for neighbor in adj(current, grid):
+            weight = 1
+            r,c = neighbor
+            if (grid[r][c]).isnumeric():
+                weight = int(grid[r][c])
+            if (wall_count(neighbor, grid)):
+                weight+=2
+            tenative_gScore = g_score[current] + weight
+            if neighbor not in g_score:
+                g_score[neighbor] = math.inf
+            if tenative_gScore < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = tenative_gScore
+                f_score[neighbor] = tenative_gScore + h(neighbor, target)
+                heapq.heappush(open_set, (f_score[neighbor], neighbor))
+
+    return "No Path"
+
+def patch_together(inter_node_costs):
+    pass
 
 def solve(grid, start, target):
-    # PLACEHOLDER - identical to starter_solver.py. It ignores the digit
-    # weights and the '*' waypoints entirely and does not reach the target.
-    # Your real solver needs a cost-aware search (e.g. Dijkstra / A* over
-    # terrain_cost) and, for "waypoints", a plan that visits every '*'.
-    path = []
-    current = start
-    for _ in range(10):
-        if current == target:
-            break
-        for direction, (dr, dc) in MOVES.items():
-            nr, nc = current[0] + dr, current[1] + dc
-            if 0 <= nr < len(grid) and 0 <= nc < len(grid[0]) and grid[nr][nc] != "#":
-                path.append(direction)
-                current = (nr, nc)
-                break
-    return path
+    # -----------------------------------------------------------
+    # REPLACE THIS with your own pathfinding logic (BFS, DFS,
+    # A*, whatever your team wants to try). This placeholder just
+    # proves the interface works: it does NOT reliably reach the
+    # target and will fail on most maps.
+    # -----------------------------------------------------------
+    #path = []
+    #current = start
+    #for _ in range(10):
+    #    # If end has been reached, break loop
+    #    if current == target:
+    #        break
+    #    # Sample path finding algorithm (doesn't work, just oscillates between (0,0) and (1,0))
+    #    # dr = delta_row, dc = delta column
+    #    for direction, (dr, dc) in MOVES.items():
+    #        nr, nc = current[0] + dr, current[1] + dc
+    #        if 0 <= nr < len(grid) and 0 <= nc < len(grid[0]) and grid[nr][nc] != "#":
+    #            path.append(direction)
+    #            current = (nr, nc)
+    #            break
+    #return path
+    return a_star(grid, start, target, manhattan)
 
 
 if __name__ == "__main__":
