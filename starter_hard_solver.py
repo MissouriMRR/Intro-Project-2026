@@ -139,6 +139,9 @@ def a_star(grid, start, target, h):
 
     return "No Path"
 
+def patch_together(inter_node_costs):
+    pass
+
 def solve(grid, start, target):
     # -----------------------------------------------------------
     # REPLACE THIS with your own pathfinding logic (BFS, DFS,
