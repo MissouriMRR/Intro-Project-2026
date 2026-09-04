@@ -23,6 +23,12 @@ def solve(grid,start,finish):
             new_path=list(path)
             new_path.append(adj)
             queue.append(new_path)
-
+def find_Waypoints(grid):
+    positions = []
+    for line in range(len(grid)):
+        for character in range(len(grid[line])):
+            if character == '*':
+                positions.append(tuple(character,line))
+    return positions
 if __name__ == "__main__":
     main()
