@@ -86,17 +86,23 @@ def adj(current, grid):
                 o.append(temp)
     return o
 
-def reconstruct_path(came_from, current):
+def reconstruct_path(came_from, current, grid):
     total_path = [current]
     while current in came_from.keys():
         current = came_from[current]
         total_path.append(current)
     total_path.reverse()
     output = []
+    cost = 1
     for i in range(len(total_path)-1):
-        output.append(MOVESREV[f"{total_path[i+1][0]-total_path[i][0]}{total_path[i+1][1]-total_path[i][1]}"])
+        r1,c1 = total_path[i]
+        r2,c2 = total_path[i+1]
+        cell2 = grid[r2][c2]
+        weight = int(cell2) if grid[r2][c2].isnumeric() else 1
+        output.append(MOVESREV[f"{r2-r1}{c2-c1}"])
+        cost+=1
     print(output)
-    return output
+    return output, cost
 
 def a_star(grid, start, target, h):
     open_set = [(0, start)]
@@ -113,7 +119,7 @@ def a_star(grid, start, target, h):
     while open_set:
         current = heapq.heappop(open_set)[1]
         if current == target:
-            return reconstruct_path(came_from, current)
+            return reconstruct_path(came_from, current, grid)
 
         for neighbor in adj(current, grid):
             weight = 1
