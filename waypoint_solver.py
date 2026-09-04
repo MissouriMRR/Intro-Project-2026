@@ -1,15 +1,6 @@
-
 from collections import deque  # noqa: F401
-
 from waypoint_manager import WaypointManager
 
-
-MOVES = {
-    "N": (-1, 0),
-    "S": (1, 0),
-    "E": (0, 1),
-    "W": (0, -1),
-}
 
 
 def solve(grid, start, target):
@@ -18,7 +9,7 @@ def solve(grid, start, target):
         for j, cell in enumerate(row):
             if cell == '*':
                 waypoints.append((i,j))
-    print(waypoints)
+    #print(waypoints)
     waypoint_manager = WaypointManager(grid, start, target, waypoints)
 
     return waypoint_manager.solve()

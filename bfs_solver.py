@@ -3,7 +3,7 @@ class PathSolver:
     def __init__(s, grid):
         s.grid = grid
 
-    def get_moves(s, start, end):
+    def solve(s, start, end):
         """
         returns a list of moves to get from the start to the target
         """
@@ -116,17 +116,3 @@ class PathSolver:
         return startNode, endNode
 
 
-def solve(grid, start, target):
-    solver = PathSolver(grid)
-    return solver.get_moves(start, target)
-
-
-if __name__ == "__main__":
-    # Quick local test against the practice map.
-    from map_utils import load_map
-    from scorer import validate_path
-
-    grid, start, target = load_map("maps/practice_maps/practice_map.txt")
-    moves = solve(grid, start, target)
-    result = validate_path(grid, start, target, moves)
-    print(result)

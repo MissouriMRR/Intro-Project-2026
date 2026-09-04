@@ -36,7 +36,7 @@ class WaypointManager:
             nodes_searched.append(currentPoint)
             # add the connections to the move_dict
             for target in targets:
-                moves = s.path_solver.get_moves(currentPoint, target)
+                moves = s.path_solver.solve(currentPoint, target)
                 if target == s.start:
                     s.move_dict[i][-2] = moves
                     s.move_dict[-2][i] = s.move_flipper(moves)
@@ -49,7 +49,7 @@ class WaypointManager:
 
 
         s.distance_dict = {from_node_id: {toNodeId: len(path) for toNodeId, path in potential_paths.items()} for from_node_id, potential_paths  in s.move_dict.items()}
-        #print("Distance Between Nodes:", s.distance_dict)
+        print("Distance Between Nodes:", s.distance_dict)
 
 
 
@@ -110,8 +110,8 @@ class WaypointManager:
                 s.destination_id = destination_id
                 s.walk_left = path_length
                 s.current_node_id = None
-                if s.from_node_id == 3 and s.destination_id == -1: #and s.past_node_ids== [-2,1,0,3]:
-                    print("Ah ha")
+                #if s.from_node_id == 3 and s.destination_id == -1: #and s.past_node_ids== [-2,1,0,3]:
+                #    print("Ah ha")
 
         runner_list = []
 

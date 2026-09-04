@@ -145,6 +145,8 @@ def render(
                 cells.append(f"{pal.trail}o{pal.reset}")
             elif ch == "#":
                 cells.append(f"{pal.wall}#{pal.reset}")
+            elif ch == "*":
+                cells.append(f"{pal.trail}*{pal.reset}")
             else:
                 cells.append(f"{pal.open}.{pal.reset}")
         out.append(f"{pal.dim}{r % 10:>3}{pal.reset} " + " ".join(cells))
