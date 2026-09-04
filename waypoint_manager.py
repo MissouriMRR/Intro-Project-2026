@@ -68,7 +68,7 @@ class WaypointManager:
         return flipped_moves
 
 
-    #return shortest possible path that start on the start, hits all waypoints and ends on the end
+    #returns shortest possible path that start on the start, hits all waypoints and ends on the end
     #returns as a list of node ids
     
     def get_node_order(s):
@@ -125,6 +125,9 @@ class WaypointManager:
 
             shortest_walk_left = min(walk_left_list)
 
+            runners_to_add = []
+            runners_to_remove = []
+
             for runner in runner_list:
 
                 runner.walk_path(shortest_walk_left)
@@ -134,16 +137,19 @@ class WaypointManager:
                     #print(runner.past_node_ids)
                     target_ids = [node_id for node_id in range(len(s.waypoints)) if node_id != runner.current_node_id and node_id not in runner.past_node_ids]
                     #print("Target IDs:", target_ids)
-                    if target_ids != []:
+                    reached_all_waypoints = target_ids == []
+                    if not reached_all_waypoints:
 
                         for to_id in target_ids:
                             #print(to_id)
                             new_runner = copy.deepcopy(runner)
                             new_runner.start_path(to_id, s.distance_dict[runner.current_node_id][to_id])
-                            runner_list.append(new_runner)
-                        runner_list.remove(runner)
+                            runners_to_add.append(new_runner)
+
+                        runners_to_remove.append(runner)
                     else:
                         if runner.courseComplete == False:
+                            print("Runner traveling to end after following path:", runner.past_node_ids, "and current node:", runner.current_node_id)
                             runner.start_path(-1, s.distance_dict[runner.current_node_id][-1])
                         else:
                             #print("Yay!!!")
@@ -151,6 +157,12 @@ class WaypointManager:
                             node_order.append(-1)
                             print("Node Order By ID:", node_order)
                             return node_order
+
+            for runner in runners_to_add:
+                runner_list.append(runner)
+
+            for runner in runners_to_remove:
+                runner_list.remove(runner)
 
 
     def solve(s):
@@ -167,60 +179,3 @@ class WaypointManager:
 
 
                 
-
-"""
-
-    def getNodeOrder(s):
-
-        adj_matrix = []
-
-        for i in range(-2, len(s.waypoints)):
-            adj_matrix.append([])
-            for j in range(-2, len(s.waypoints)):
-                if j in s.move_dict[i]:
-                    adj_matrix[i+2].append(s.distance_dict[i][j]))
-                else:
-                    adj_matrix[i+2].append(0)
-
-
-
-        pathCost = []
-
-
-        def getTargetNodes(s, pastNodes, currentNode):
-            return [node for node in s.waypoints if node not in pastNodes and node != currentNode]
-
-
-        def checkNextLayer(s, current_branch):
-
-            new_branch =  current_branch
-
-            for 
-
-
-
-        
-
-
-
-        way_path_dict = s.move_dict.copy()
-        way_path_dict.pop(-1)
-        way_path_dict.pop(-2)
-
-        while True:
-            for destination, potentail_paths in s.move_dict[-1].items():
-                pathCost.append({destination, ([], len(potentail_paths))})
-                
-                
-                for destination2, potentail_paths in s.move_dict[]
-        """
-
-
-    
-
-   
-
-
-
-
-        
