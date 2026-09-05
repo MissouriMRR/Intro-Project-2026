@@ -46,6 +46,8 @@ Return a list of "N"/"S"/"E"/"W" moves, exactly like the standard solver.
 """
 from map_utils import in_bounds, is_open
 import heapq, math
+import itertools as it
+import random
 
 # Opt in to hard mode. Trim this list to just the modifiers you actually
 # handle - claiming one you break costs you points.
@@ -133,8 +135,49 @@ def a_star(grid, start, target, h):
 
     return "No Path"
 
-def patch_together(inter_node_costs):
-    pass
+def flip_path(path):
+    newPath = path[::] # replace/remove if you want actual path to be changed
+    newPath.reverse()
+    for i in range(len(newPath)):
+        if newPath[i] == 'N':
+            newPath[i] = 'S'
+        elif newPath[i] == 'S':
+            newPath[i] = 'N'
+        elif newPath[i] == 'E':
+            newPath[i] = 'W'
+        elif newPath[i] == 'W':
+            newPath[i] = 'E'
+    return newPath
+
+def patch_together(inter_node_costs, num_waypoints):
+    cost_arr = [[0 for i in range(num_waypoints+2)] for j in range(num_waypoints+2)]
+    for inc in inter_node_costs:
+        cost_arr[inc[0]][inc[1]] = [inc[2], inc[3][::]]
+        cost_arr[inc[1]][inc[0]] = [inc[2], flip_path(inc[3])]
+    min_cost = math.inf
+    min_path = None
+    for perm in it.permutations(range(1, num_waypoints + 1)):
+        path = [0] + list(perm) + [num_waypoints + 1]
+        cost = 0
+        for i in range(num_waypoints + 1):
+            cost += cost_arr[path[i]][path[i+1]][0]
+        if cost < min_cost:
+            min_cost = cost
+            min_path = path[::]
+    final_path = []
+    for i in range(num_waypoints + 1):
+        final_path.extend(cost_arr[min_path[i]][min_path[i+1]][1])
+    return final_path
+
+
+#Used to generate test data for patch function until I have actual data
+"""def gen_patch_sample_data(num_waypoints):
+    incs = []
+    for i in range(num_waypoints + 1):
+        for j in range(i + 1, num_waypoints + 2):
+            incs.append([i,j,random.randint(1,10),["N"]])
+    return incs"""
+    
 
 def solve(grid, start, target):
     # -----------------------------------------------------------

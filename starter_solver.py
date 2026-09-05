@@ -96,20 +96,6 @@ def a_star(grid, start, target, h):
 
     return "No Path"
 
-def flip_path(path):
-    newPath = path[::] # replace/remove if you want actual path to be changed
-    newPath.reverse()
-    for i in range(len(newPath)):
-        if newPath[i] == 'N':
-            newPath[i] = 'S'
-        elif newPath[i] == 'S':
-            newPath[i] = 'N'
-        elif newPath[i] == 'E':
-            newPath[i] = 'W'
-        elif newPath[i] == 'W':
-            newPath[i] = 'E'
-    return newPath
-
 def solve(grid, start, target):
     # -----------------------------------------------------------
     # REPLACE THIS with your own pathfinding logic (BFS, DFS,
