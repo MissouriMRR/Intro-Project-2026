@@ -4,7 +4,8 @@ import copy
 class WaypointManager:
 
     def __init__(s, grid, start, end, waypoints):
-        s.grid = grid
+        s.grid = copy.deepcopy(grid)
+        s.process_map()
         s.start = start
         s.end = end
         s.waypoints = waypoints
@@ -163,6 +164,62 @@ class WaypointManager:
 
             for runner in runners_to_remove:
                 runner_list.remove(runner)
+
+
+    def process_map(s):
+
+   
+        def num_adj_mines(tile_pos):
+            num_mines = 0
+
+            for veritical in (-1,0,1):
+                for horizontal in (-1,0,1):
+                    if (
+                        veritical + tile_pos[0] != -1 and 
+                        veritical + tile_pos[0] != len(s.grid) and 
+                        horizontal + tile_pos[1] != -1 and
+                        horizontal + tile_pos[1] != len(s.grid[0]) and
+                        s.grid[veritical + tile_pos[0]][horizontal + tile_pos[1]] == '#'
+                    ):
+                        num_mines += 1
+            #print(num_mines)
+
+            return num_mines
+
+        mines_to_add = []
+    
+        string_nums = [f"{i}" for i in range(1, 10)]
+        
+
+        for i, row in enumerate(s.grid):
+            for j, tile in enumerate(row):
+                if tile == '.' or tile in string_nums:
+                    num_mines = num_adj_mines((i,j))
+                    if num_mines >= 3:
+                        mines_to_add.append((i,j))
+                    elif num_mines != 0:
+                        if tile == '.':
+                            cost = 2*num_mines
+                        else:
+                            cost = int(tile) + 2*num_mines
+                        s.grid[i][j] = str(cost)
+        for i, j in mines_to_add:
+
+            s.grid[i][j] = '#'
+                        
+
+
+                        
+
+
+                    
+
+        
+
+        
+                    
+                    
+
 
 
     def solve(s):

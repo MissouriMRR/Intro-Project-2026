@@ -215,7 +215,7 @@ class PathSolver:
 
 
 def path_to_move(path):
-    print(path)
+    #print(path)
     moves = []
     for i in range(len(path) - 1):
         current, next = path[i], path[i + 1]

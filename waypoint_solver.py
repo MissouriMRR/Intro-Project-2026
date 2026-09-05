@@ -3,6 +3,7 @@ from waypoint_manager import WaypointManager
 
 
 
+
 def solve(grid, start, target):
     waypoints =[]
     for i, row in enumerate(grid):
@@ -14,15 +15,18 @@ def solve(grid, start, target):
 
     return waypoint_manager.solve()
 
+MODIFIERS = ["terrain", "risk", "waypoints"]
 
 if __name__ == "__main__":
-
-    # Quick local test against the practice map.
-    from map_utils import load_map
+    # Quick local test against the hard practice map.
+    from map_utils import load_map_ex
     from scorer import validate_path
 
-    grid, start, target = load_map("maps/practice_maps/practice_map.txt")
+    grid, start, target, waypoints = load_map_ex(
+        "maps/practice_maps/hard/practice_hard.txt"
+    )
     moves = solve(grid, start, target)
-
-    result = validate_path(grid, start, target, moves)
-    print("\n"+str(result))
+    result = validate_path(
+        grid, start, target, moves, modifiers=MODIFIERS, waypoints=waypoints
+    )
+    print(result)
