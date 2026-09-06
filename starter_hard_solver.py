@@ -17,9 +17,9 @@ line entirely to go back to standard-only scoring.
   - "terrain":   digit cells 1-9 cost that many energy units to enter
                  ('.', 'S', 'T', '*' all cost 1). Your cost is energy, not
                  step count. Energy over 1.6x optimal -> score x0.4.
-  - "risk":      every cell you fly through that touches a '#' adds +2 cost
-                 per adjacent '#'. Fly through a cell touching >= 3 '#' and
-                 that map's score is x0.4.
+  - "risk":      no cost change. Just don't fly through a cell that has 2
+                 or more '#' directly N/S/E/W of it (diagonals don't count)
+                 - if you do, that map's score is x0.4.
   - "waypoints": you must fly over every '*' cell before landing on 'T'.
                  Miss one -> 0 for that map. Order is yours to choose.
 
