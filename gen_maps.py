@@ -4,8 +4,9 @@ Generates airspace maps for the Drone Pathfinder Challenge.
 
 Every generated map is verified at generation time, so it always has at
 least one valid path from S to T. Hard-mode maps are verified further:
-every waypoint is reachable, and a route that respects the scorer's risk
-cap exists.
+every waypoint sits on clean ground and can be reached - along with T -
+by a route that respects the scorer's risk cap, so no tour is ever forced
+through a one-wide gap between two obstacles.
 
 Standard practice map:
     uv run gen_maps.py --out maps/practice_maps/my_map.txt --seed 42
@@ -35,10 +36,11 @@ from map_utils import wall_count
 # (path, height, width, wall_probability, seed) for the stock practice map.
 PRACTICE_MAP = ("maps/practice_maps/practice_map.txt", 10, 10, 0.22, 1)
 
-# Cells touching this many '#' are off-limits to the scorer's risk cap; a
-# hard map is only accepted if S can still reach every waypoint and T
-# without ever stepping on such a cell.
-RISK_CAP_WALLS = 3
+# A cell with this many '#' directly N/S/E/W of it (diagonals ignored) is
+# off-limits under the scorer's risk cap. A hard map is only accepted if S
+# can still reach every waypoint and T on a route that never steps on such
+# a cell - so no route is ever forced through a one-wide gap between walls.
+RISK_CAP_WALLS = 2
 
 
 def bfs_reachable(grid, start):
@@ -61,10 +63,12 @@ def bfs_reachable(grid, start):
 
 
 def risk_safe_reachable(grid, start):
-    """BFS that refuses to enter a cell touching >= RISK_CAP_WALLS walls.
+    """BFS that refuses to enter a cell with >= RISK_CAP_WALLS '#'
+    orthogonally adjacent (the scorer's risk cap; diagonals do not count).
 
-    Mirrors the scorer's risk cap so a hard map is never shipped with a
-    waypoint or target that a cap-respecting route cannot reach.
+    Mirrors the scorer so a hard map is never shipped with a waypoint or
+    target that a cap-respecting route cannot reach, and so no route is
+    ever forced to squeeze through a one-wide gap between two walls.
     """
     h, w = len(grid), len(grid[0])
     if wall_count(grid, start) >= RISK_CAP_WALLS:
@@ -163,10 +167,15 @@ def gen_hard_map(h, w, wall_prob, seed, n_waypoints, max_weight=9):
         ]
         grid[start[0]][start[1]] = "."
         grid[target[0]][target[1]] = "."
-        reachable = bfs_reachable(grid, start)
-        if target not in reachable:
+        # A cap-respecting route must already reach T ...
+        safe = risk_safe_reachable(grid, start)
+        if target not in safe:
             continue
-        waypoints = _pick_waypoints(rng, reachable, start, target, n_waypoints)
+        # ... and every waypoint is drawn only from cells such a route can
+        # reach, so each '*' sits on clean ground and the tour never has to
+        # squeeze through a one-wide gap between two walls. Terrain digits,
+        # added next, never touch '#' cells, so they cannot change this.
+        waypoints = _pick_waypoints(rng, safe, start, target, n_waypoints)
         if not waypoints:
             continue
         _add_terrain(grid, rng, max_weight)
@@ -174,9 +183,6 @@ def gen_hard_map(h, w, wall_prob, seed, n_waypoints, max_weight=9):
         grid[target[0]][target[1]] = "T"
         for r, c in waypoints:
             grid[r][c] = "*"
-        safe = risk_safe_reachable(grid, start)
-        if target not in safe or any(wp not in safe for wp in waypoints):
-            continue
         return ["".join(row) for row in grid]
     raise RuntimeError(
         "could not generate a feasible hard map; try a lower --wall-prob "
