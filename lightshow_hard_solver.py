@@ -51,7 +51,7 @@ Return a list of "N"/"S"/"E"/"W" moves, exactly like the standard solver.
 # handle - claiming one you break costs you points.
 # MODIFIERS = ["terrain", "risk", "waypoints"]
 
-MODIFIERS = []
+MODIFIERS = ["risk"]
 
 MOVES = {
     "N": (-1, 0),
@@ -75,6 +75,21 @@ def check_pos_validity(grid, row, col, row_max, col_max):
         return False
     if grid[row][col] == "#":
         return False
+
+    if "risk" in MODIFIERS:
+
+        adj_obstacles = 0
+
+        for dir in MOVES.values():
+
+            if (check_pos_bounds(row + dir[0], col + dir[1], row_max, col_max)
+                and grid[row + dir[0]][col + dir[1]] == "#"):
+
+                adj_obstacles = adj_obstacles + 1
+
+        if adj_obstacles >= 2:
+
+            return False
 
     return True
 
