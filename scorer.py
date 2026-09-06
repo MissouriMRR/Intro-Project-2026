@@ -60,10 +60,13 @@ VIOLATION_FACTOR = 0.4
 # 'terrain' route may cost up to this * optimal before it counts as over budget.
 ENERGY_BUDGET_SLACK = 1.6
 
-# Flying through a cell that touches this many '#' breaks the risk cap.
+# The 'risk' modifier adds no cost - it is a pure discipline check. Flying
+# through a cell that has this many '#' directly N/S/E/W of it (diagonals
+# do not count) trips the risk cap and multiplies the map score by
+# VIOLATION_FACTOR. The reference route and the map generator both treat
+# such cells as impassable, so a clean route to every waypoint and to T
+# always exists - no route is ever forced through a one-wide gap.
 RISK_CAP_WALLS = 2
-# Scoring cost added per adjacent '#', for every fringe cell flown through.
-RISK_PER_ADJACENT_WALL = 2
 
 BASE_POINTS = 100.0
 INF = float("inf")
@@ -71,12 +74,12 @@ INF = float("inf")
 
 # --- cost model -----------------------------------------------------------
 def step_cost(grid, cell, modifiers):
-    """Scoring cost to fly INTO `cell`, given the active modifier set."""
+    """Scoring cost to fly INTO `cell`, given the active modifier set.
+
+    Only 'terrain' changes the per-cell cost. 'risk' adds nothing here - it
+    is enforced purely as the risk cap in validate_path()."""
     r, c = cell
-    cost = terrain_cost(grid[r][c]) if "terrain" in modifiers else 1
-    if "risk" in modifiers:
-        cost += RISK_PER_ADJACENT_WALL * wall_count(grid, cell)
-    return cost
+    return terrain_cost(grid[r][c]) if "terrain" in modifiers else 1
 
 
 def active_modifiers(grid):
@@ -105,8 +108,9 @@ def validate_path(grid, start, target, moves, modifiers=frozenset(), waypoints=(
         crashed:         hit a wall, edge, or bad move token
         visited:         list of positions visited, including start
         energy:          summed step_cost over entered cells (== path_length
-                         when no cost modifiers are active)
-        risk_cap_hit:    flew through a cell touching >= RISK_CAP_WALLS walls
+                         unless 'terrain' is active)
+        risk_cap_hit:    flew through a cell with >= RISK_CAP_WALLS '#'
+                         directly N/S/E/W of it
         waypoints_total: number of '*' cells that had to be visited
         waypoints_hit:   how many were actually flown over
         waypoints_ok:    all required waypoints were visited
@@ -161,8 +165,9 @@ def validate_path(grid, start, target, moves, modifiers=frozenset(), waypoints=(
 # --- reference (optimal-cost) solver --------------------------------------
 def _min_costs(grid, src, modifiers):
     """Dijkstra: least scoring cost from `src` to every reachable cell,
-    under `modifiers`. Cells that break the risk cap are excluded when
-    'risk' is active, so the optimal route is always legal."""
+    under `modifiers`. When 'risk' is active, cells that trip the risk cap
+    (>= RISK_CAP_WALLS orthogonally-adjacent '#') are excluded, so the
+    optimal route is always legal."""
     dist: dict[tuple[int, int], int] = {src: 0}
     pq: list[tuple[int, tuple[int, int]]] = [(0, src)]
     risk_on = "risk" in modifiers
@@ -181,7 +186,6 @@ def _min_costs(grid, src, modifiers):
                 dist[v] = nd
                 heapq.heappush(pq, (nd, v))
     return dist
-
 
 
 def optimal_cost(grid, start, target, waypoints, modifiers):
@@ -220,7 +224,7 @@ def effective_score(result, optimal, modifiers, runtime):
     if "waypoints" in modifiers and not result["waypoints_ok"]:
         return 0.0
 
-    uses_energy = bool(modifiers & {"terrain", "risk"})
+    uses_energy = "terrain" in modifiers
     your_cost = max(result["energy"] if uses_energy else result["path_length"], 1)
 
     if optimal < INF and optimal > 0:

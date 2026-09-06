@@ -17,9 +17,9 @@ line entirely to go back to standard-only scoring.
   - "terrain":   digit cells 1-9 cost that many energy units to enter
                  ('.', 'S', 'T', '*' all cost 1). Your cost is energy, not
                  step count. Energy over 1.6x optimal -> score x0.4.
-  - "risk":      every cell you fly through that touches a '#' adds +2 cost
-                 per adjacent '#'. Fly through a cell touching >= 3 '#' and
-                 that map's score is x0.4.
+  - "risk":      no cost change. Just don't fly through a cell that has 2
+                 or more '#' directly N/S/E/W of it (diagonals don't count)
+                 - if you do, that map's score is x0.4.
   - "waypoints": you must fly over every '*' cell before landing on 'T'.
                  Miss one -> 0 for that map. Order is yours to choose.
 
@@ -51,7 +51,7 @@ import random
 
 # Opt in to hard mode. Trim this list to just the modifiers you actually
 # handle - claiming one you break costs you points.
-MODIFIERS = ["terrain", "risk"]#["terrain", "risk", "waypoints"]
+MODIFIERS = ["terrain", "risk", "waypoints"]
 
 MOVES = {
     "N": (-1, 0),
@@ -70,30 +70,34 @@ MOVESREV = {
 def manhattan(current, target):
     return abs(current[0] - target[0]) + abs(current[1] - target[1])
 
+def find_Waypoints(grid):
+    positions = []
+    for line in range(len(grid)):
+        for character in range(len(grid[line])):
+            if grid[line][character] == '*':
+                positions.append((line,character))
+    return positions
+
 #connect start waypoint and end node.  The main node sections contains start and all waypoints, then the second is all way points then the end.   [First node][connecting node][info tuple]
 #tuple info*()
-def node_connection():
-  node_list=find_Waypoints(grid)
+def node_connection(grid, node_list, start, end):
   node_connection_list=[]
   connections = []
-  n=len(node_list)
+  nodes = [start] + node_list + [end]
+  n=len(nodes)
   i=0
   while(i<n):
     connections.clear()
-    j=0
+    j=i+1
     while(j<n):
-      connections.append(a_star(grid, node_list[i], node_list[j], h))
+      print(nodes[i])
+      print(nodes[j])
+      output, cost = a_star(grid, nodes[i], nodes[j], manhattan)
+      node_connection_list.append((i,j,cost,output))
       j+=1
-    connections.append(a_star(grid, node_list[i][0], end, h))
     i+=1
-  #if len(node_list)==0:
-    node_connection_list.append(connections)
-
 
   return node_connection_list
-
-
-
 
 
 def wall_count(adj, grid):
@@ -131,7 +135,6 @@ def reconstruct_path(came_from, current, grid):
             weight+=2
         output.append(MOVESREV[f"{r2-r1}{c2-c1}"])
         cost+=weight
-    print(cost)
     return output, cost
 
 def a_star(grid, start, target, h):
@@ -156,8 +159,8 @@ def a_star(grid, start, target, h):
             r,c = neighbor
             if (grid[r][c]).isnumeric():
                 weight = int(grid[r][c])
-            if (wall_count(neighbor, grid)):
-                weight+=2
+            #if (wall_count(neighbor, grid)):
+            #    weight+=2
             tenative_gScore = g_score[current] + weight
             if neighbor not in g_score:
                 g_score[neighbor] = math.inf
@@ -166,7 +169,6 @@ def a_star(grid, start, target, h):
                 g_score[neighbor] = tenative_gScore
                 f_score[neighbor] = tenative_gScore + h(neighbor, target)
                 heapq.heappush(open_set, (f_score[neighbor], neighbor))
-
     return "No Path"
 
 def flip_path(path):
@@ -235,7 +237,10 @@ def solve(grid, start, target):
     #            current = (nr, nc)
     #            break
     #return path
-    path, cost = a_star(grid, start, target, manhattan)
+    waypoints = find_Waypoints(grid)
+    intPaths = node_connection(grid, waypoints, start, target)
+    path = patch_together(intPaths, len(waypoints))
+    #path, cost = a_star(grid, start, target, manhattan)
     return path
 
 if __name__ == "__main__":

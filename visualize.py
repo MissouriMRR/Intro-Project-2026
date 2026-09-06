@@ -268,7 +268,7 @@ def hard_report(grid, start, target, waypoints, result, eff_mods, declared_mods,
         )
 
     optimal = optimal_cost(grid, start, target, waypoints, eff_mods)
-    uses_energy = bool(eff_mods & {"terrain", "risk"})
+    uses_energy = "terrain" in eff_mods
     metric = "energy" if uses_energy else "steps"
     your_cost = result["energy"] if uses_energy else result["path_length"]
     if optimal not in (INF, None) and optimal > 0:
@@ -296,7 +296,7 @@ def hard_report(grid, start, target, waypoints, result, eff_mods, declared_mods,
             more = "" if len(skimmed) <= 6 else f" +{len(skimmed) - 6} more"
             lines.append(
                 f"  risk cap    : {pal.crash}HIT{pal.reset} - {len(skimmed)} cell(s) "
-                f"touch >={RISK_CAP_WALLS} '#' -> score x0.4: {cells(head)}{more}"
+                f"with >={RISK_CAP_WALLS} '#' N/S/E/W -> score x0.4: {cells(head)}{more}"
             )
         else:
             lines.append("  risk cap    : clear")
