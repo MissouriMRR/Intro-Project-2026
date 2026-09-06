@@ -59,16 +59,16 @@ Add `--delay 0.5` to slow the replay down, or `--no-color` for plain output.
 
 ## Files
 
-| File                                  | Purpose                                                                                                                                        |
-| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `starter_solver.py`                   | **Start here.** Contains the interface + a placeholder that intentionally fails, so you can confirm the harness runs before writing real logic |
-| `starter_hard_solver.py`              | Same placeholder, but shows how to opt in to hard mode with a `MODIFIERS` list and how to find the `*` waypoints. Copy it if you want to compete in hard mode                              |
-| `map_utils.py`                        | Loads map files, shared move constants                                                                                                         |
-| `scorer.py`                           | Runs one or more solvers against a set of maps and prints a leaderboard                                                                        |
-| `visualize.py`                        | Draws the route your solver flew (direction arrows, revisits, crash point) with an optional step-by-step replay                                |
-| `gen_maps.py`                         | Generates maps (standard or `--mode hard`) with a guaranteed valid path — use it to make extra practice maps                                   |
-| `maps/practice_maps/practice_map.txt` | Use this map for testing as you develop your algorithm                                                                                         |
-| `maps/practice_maps/hard/`            | Hard-mode practice maps (weighted airspace + waypoints); not scored by the default practice glob                                               |
+| File                                  | Purpose                                                                                                                                                       |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `starter_solver.py`                   | **Start here.** Contains the interface + a placeholder that intentionally fails, so you can confirm the harness runs before writing real logic                |
+| `starter_hard_solver.py`              | Same placeholder, but shows how to opt in to hard mode with a `MODIFIERS` list and how to find the `*` waypoints. Copy it if you want to compete in hard mode |
+| `map_utils.py`                        | Loads map files, shared move constants                                                                                                                        |
+| `scorer.py`                           | Runs one or more solvers against a set of maps and prints a leaderboard                                                                                       |
+| `visualize.py`                        | Draws the route your solver flew (direction arrows, revisits, crash point) with an optional step-by-step replay                                               |
+| `gen_maps.py`                         | Generates maps (standard or `--mode hard`) with a guaranteed valid path — use it to make extra practice maps                                                  |
+| `maps/practice_maps/practice_map.txt` | Use this map for testing as you develop your algorithm                                                                                                        |
+| `maps/practice_maps/hard/`            | Hard-mode practice maps (weighted airspace + waypoints); not scored by the default practice glob                                                              |
 
 The scoring maps live in `maps/scoring_maps/` and are revealed only at
 scoring time — this is what actually determines the leaderboard. Your
@@ -142,17 +142,23 @@ On a hard map a plain `.` is just weighted airspace of cost `1` — it and a
 `1` cell are identical to fly into. `S`, `T`, and `*` also cost `1` to
 enter. Only digits `2`–`9` cost more.
 
-| Modifier    | What changes                                                                                        | Bonus | Fail condition & cost                              |
-| ----------- | --------------------------------------------------------------------------------------------------- | ----- | -------------------------------------------------- |
-| `terrain`   | Flying into a digit cell costs that many energy units (not 1). Your cost is measured in **energy**. | ×1.35 | Energy over `1.6 × optimal` → score ×0.4               |
-| `risk`      | Every cell flown through that touches a `#` adds `+2` cost per adjacent `#`.                        | ×1.25 | Flying through a cell touching ≥3 `#` → score ×0.4 |
-| `waypoints` | The drone must fly over every `*` before landing on `T`. Visiting order is yours to choose.         | ×1.50 | Miss any `*` → **0 for that map**                  |
+| Modifier    | What changes                                                                                        | Bonus | Fail condition & cost                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------- |
+| `terrain`   | Flying into a digit cell costs that many energy units (not 1). Your cost is measured in **energy**. | ×1.35 | Energy over `1.6 × optimal` → score ×0.4                                                                |
+| `risk`      | Keep clear of tight spots wedged between obstacles.                                                 | ×1.25 | Flying through a cell with ≥2 `#` directly N/S/E/W of it (diagonals and walls don't count) → score ×0.4 |
+| `waypoints` | The drone must fly over every `*` before landing on `T`. Visiting order is yours to choose.         | ×1.50 | Miss any `*` → **0 for that map**                                                                       |
 
 So a team that enables all three and flies a near-optimal waypoint tour
 within budget scores about `100 × 1.35 × 1.25 × 1.5 ≈ 253` on a hard map,
 versus `~100` for a plain BFS run — but one missed waypoint zeros the map,
 and a disciplined BFS team that never gambles can win the round if the
 ambitious teams stumble.
+
+The `risk` cap only ever bites a solver that steers into a wedge on its
+own. Every hard map is generated so that a route respecting the cap
+reaches every `*` and `T` — you are never forced through a one-wide gap
+between two obstacles — and the scorer's reference route treats a
+`≥2`-wall cell as impassable, so `optimal` is always a clean path.
 
 Modifiers only ever apply on the hard pool. Standard maps are always
 scored plain, for everyone. A no-`MODIFIERS` solver still runs on hard
@@ -218,6 +224,7 @@ uv run gen_maps.py --mode hard --out maps/practice_maps/hard --count 5 --seed 20
 
 Every generated map is verified to have at least one valid path, so you
 can never get stuck on an unsolvable map. Hard maps are checked further:
-every waypoint is reachable, and a route that respects the risk cap
-exists. Running `uv run gen_maps.py` with no arguments rewrites the stock
-practice map in place.
+every waypoint sits on clean ground and a route that respects the risk cap
+reaches every waypoint and `T` without ever squeezing through a one-wide
+gap between two obstacles. Running `uv run gen_maps.py` with no arguments
+rewrites the stock practice map in place.

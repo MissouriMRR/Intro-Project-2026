@@ -133,18 +133,16 @@ def terrain_cost(ch):
 
 def wall_count(grid, pos):
     """
-    How many restricted-airspace ('#') cells sit in the 8-neighbourhood of
-    `pos`. Cells off the edge of the map do not count. The scorer's 'risk'
-    modifier uses this to penalise routes that skim restricted airspace.
+    How many restricted-airspace ('#') cells sit directly north, south,
+    east or west of `pos`. Diagonals do not count, and cells off the edge
+    of the map do not count. The scorer's 'risk' modifier uses this to
+    penalise routes that squeeze through tight gaps between obstacles.
     """
     r, c = pos
     h, w = len(grid), len(grid[0])
     count = 0
-    for dr in (-1, 0, 1):
-        for dc in (-1, 0, 1):
-            if dr == 0 and dc == 0:
-                continue
-            nr, nc = r + dr, c + dc
-            if 0 <= nr < h and 0 <= nc < w and grid[nr][nc] == "#":
-                count += 1
+    for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        nr, nc = r + dr, c + dc
+        if 0 <= nr < h and 0 <= nc < w and grid[nr][nc] == "#":
+            count += 1
     return count
