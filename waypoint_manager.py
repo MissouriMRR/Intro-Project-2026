@@ -3,9 +3,10 @@ import copy
 
 class WaypointManager:
 
-    def __init__(s, grid, start, end, waypoints):
+    def __init__(s, grid, start, end, waypoints, risk_modifier_on = True):
         s.grid = copy.deepcopy(grid)
-        s.process_map()
+        if risk_modifier_on:
+            s.process_map()
         s.start = start
         s.end = end
         s.waypoints = waypoints

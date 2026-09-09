@@ -3,6 +3,7 @@ from waypoint_manager import WaypointManager
 
 
 
+MODIFIERS = ["terrain", "risk", "waypoints"]
 
 def solve(grid, start, target):
     waypoints =[]
@@ -11,11 +12,11 @@ def solve(grid, start, target):
             if cell == '*':
                 waypoints.append((i,j))
     #print(waypoints)
-    waypoint_manager = WaypointManager(grid, start, target, waypoints)
+    waypoint_manager = WaypointManager(grid=grid, start=start, target=target, waypoints=waypoints, risk_modifier_on=True)
 
     return waypoint_manager.solve()
 
-MODIFIERS = ["terrain", "risk", "waypoints"]
+
 
 if __name__ == "__main__":
     # Quick local test against the hard practice map.
