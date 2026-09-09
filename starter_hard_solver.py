@@ -70,6 +70,32 @@ MOVESREV = {
 def manhattan(current, target):
     return abs(current[0] - target[0]) + abs(current[1] - target[1])
 
+#connect start waypoint and end node.  The main node sections contains start and all waypoints, then the second is all way points then the end.   [First node][connecting node][info tuple]
+#tuple info*()
+def node_connection():
+  node_list=find_Waypoints(grid)
+  node_connection_list=[]
+  connections = []
+  n=len(node_list)
+  i=0
+  while(i<n):
+    connections.clear()
+    j=0
+    while(j<n):
+      connections.append(a_star(grid, node_list[i], node_list[j], h))
+      j+=1
+    connections.append(a_star(grid, node_list[i][0], end, h))
+    i+=1
+  #if len(node_list)==0:
+    node_connection_list.append(connections)
+
+
+  return node_connection_list
+
+
+
+
+
 def wall_count(adj, grid):
     count = 0
     for _,move2 in MOVES.items():
