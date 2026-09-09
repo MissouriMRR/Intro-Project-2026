@@ -44,6 +44,17 @@ MOVESREV = {
     "0-1" : "W"
 }
 
+
+#connect start waypoint and end node.  The main node sections contains start and all waypoints, then the second is all way points then the end.   [First node][connecting node][info tuple]
+#tuple info*()
+def node_connection()
+  node_list=find_Waypoints(grid)
+  node_connection_list=[]
+  #if len(node_list)==0:
+  node_connection_list.append((start,target))
+  return node_connection_list
+
+
 def manhattan(current, target):
     return abs(current[0] - target[0]) + abs(current[1] - target[1])
 
