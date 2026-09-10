@@ -1,20 +1,25 @@
-from collections import deque  # noqa: F401
-from waypoint_manager import WaypointManager
-
-
+from path_finder import PathFinder
 
 MODIFIERS = ["terrain", "risk", "waypoints"]
 
 def solve(grid, start, target):
+
+
+    #finds waypoint positions
     waypoints =[]
     for i, row in enumerate(grid):
         for j, cell in enumerate(row):
             if cell == '*':
                 waypoints.append((i,j))
-    #print(waypoints)
-    waypoint_manager = WaypointManager(grid=grid, start=start, target=target, waypoints=waypoints, risk_modifier_on=True)
 
-    return waypoint_manager.solve()
+
+    # initialize path finder class
+    # specify if risk modifier is in use(other modifiers already accounted for in code)
+    path_finder = PathFinder(grid=grid, start=start, end=target, waypoints=waypoints, risk_modifier_on=True)
+
+
+
+    return path_finder.solve()
 
 
 

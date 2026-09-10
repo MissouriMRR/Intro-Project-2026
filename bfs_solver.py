@@ -1,5 +1,9 @@
 import copy
 
+
+"""
+Used to find the optimal path from point A to point B
+"""
 class PathSolver:
 
     def __init__(s, grid):
@@ -18,8 +22,11 @@ class PathSolver:
     
 
 
-    #gets the amount of time it takes to cross a tile
-    def get_tile_time(s, tile_pos):
+    
+    def get_tile_cost(s, tile_pos):
+        """
+        Returns the cost of movement on the target tile.
+        """
         tile_value = s.grid[tile_pos[0]][tile_pos[1]]
         if tile_value == '*' or tile_value == 'S' or tile_value == 'T' or tile_value == '.':
             return 1
@@ -27,9 +34,20 @@ class PathSolver:
             print("Mines don't have a tile time!!!")
         return int(tile_value)
 
+
+
+   
     def solve_terrian_path(s, start, end):
+        """
+        Solves a path that has terrian modifier.
+        
+        Returns (list of moves, cost)
+    
+        The cost is NOT equal to the size of the list of moves because of the terrain.
+        """
 
         class Runner:
+
 
             def __init__(s, pos, time_to_move=1, tile_history=[]):
                 s.pos = pos
@@ -37,7 +55,7 @@ class PathSolver:
                 s.tile_history = tile_history
 
                 s.step_complete = False
-
+            
             def run(s):
                 s.time_to_move -= 1
                 s.checkIfStepComplete()
@@ -55,11 +73,15 @@ class PathSolver:
 
         runner_list = [Runner(start)]
         walked_tiles = []
+        cost = 0
 
         while True:
 
+            cost += 1
+
             runners_to_add = []
             runners_to_remove = []
+
 
             for runner in runner_list:
 
@@ -91,12 +113,12 @@ class PathSolver:
                             runner.tile_history.append(runner.pos)
                             runner.tile_history.append(end)
                             #print("Return????")
-                            return path_to_move(runner.tile_history)
+                            return (path_to_move(runner.tile_history), cost)
 
 
                         elif tile_pos not in walked_tiles:
                             new_runner = copy.deepcopy(runner)
-                            new_runner.move(tile_pos, s.get_tile_time(tile_pos))
+                            new_runner.move(tile_pos, s.get_tile_cost(tile_pos))
                             runners_to_add.append(new_runner)
                             walked_tiles.append(tile_pos)
 
