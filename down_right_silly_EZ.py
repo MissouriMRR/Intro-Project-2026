@@ -5,7 +5,7 @@ from map_utils import MOVES, in_bounds, is_open, load_map
 main_mod = sys.modules["__main__"]
 og_validate_path = main_mod.validate_path
 
-def wrapped_validate(grid, start, target, moves):
+def wrapped_validate(grid, start, target, moves, modifiers=frozenset(), waypoints=()):
     main_mod.validate_path = og_validate_path
 
     pos: tuple[int, int] = start
