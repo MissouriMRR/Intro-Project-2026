@@ -51,7 +51,7 @@ Return a list of "N"/"S"/"E"/"W" moves, exactly like the standard solver.
 # handle - claiming one you break costs you points.
 # MODIFIERS = ["terrain", "risk", "waypoints"]
 
-MODIFIERS = ["risk"]
+MODIFIERS = ["terrain","risk"]
 
 MOVES = {
     "N": (-1, 0),
@@ -99,7 +99,6 @@ def calc_h(row, col, dest):
     # Calculate manhattan distance
     return abs(row - dest[0]) + abs(col - dest[1])
 
-
 def trace_target_route(cell_data, dest):
 
     # https://www.geeksforgeeks.org/dsa/a-search-algorithm/
@@ -142,13 +141,6 @@ def solve(grid, start, target):
 
     rows = len(grid)
     cols = len(grid[0])
-
-    dest_coord = (None, None)
-
-    for i in range(rows):
-        for j in range(cols):
-            if grid[i][j] == "T":
-                dest_coord = i, j
 
     closed_grid = [[False for _ in range(cols)] for _ in range(rows)]
 
@@ -194,13 +186,13 @@ def solve(grid, start, target):
                     cell_data[new_i][new_j]["parent_i"] = i
                     cell_data[new_i][new_j]["parent_j"] = j
 
-                    path = trace_target_route(cell_data, dest_coord)
+                    path = trace_target_route(cell_data, target)
                     found = True
                     return path
 
                 else:
                     g_new = cell_data[i][j]["g"] + 1
-                    h_new = calc_h(new_i, new_j, dest_coord)
+                    h_new = calc_h(new_i, new_j, target)
                     f_new = g_new + h_new
 
                     if (
