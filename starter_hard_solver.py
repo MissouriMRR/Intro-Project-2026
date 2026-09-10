@@ -8,11 +8,21 @@ placeholder: it does NOT reach the target. Replace it with real logic.
 
 --- Opting in to hard mode -------------------------------------------------
 
-Add a module-level MODIFIERS list. Pick any subset - each one multiplies
-your score on every hard map but adds a rule you can break. Delete the
-line entirely to go back to standard-only scoring.
+Declare the pool you compete in, then pick your modifiers:
 
+    MODE      = "hard"
     MODIFIERS = ["terrain", "risk", "waypoints"]
+
+You are in exactly ONE pool. A hard solver is scored on the five hard maps
+and is never run on the standard maps; an easy solver is the reverse. If
+you omit MODE, the pool is inferred from MODIFIERS - having any at all
+puts you in hard.
+
+Each modifier multiplies what a hard map is worth to you but adds a rule
+you can break. An easy map caps at 1.00 point; a hard map caps at 1.00 x
+your bonuses (1.35 x 1.25 x 1.5 = 2.53 with all three), so a clean hard
+run is worth up to 12.66 against the easy pool's 5.00. Claim only what you
+actually handle - a modifier you break costs you more than not taking it.
 
   - "terrain":   digit cells 1-9 cost that many energy units to enter
                  ('.', 'S', 'T', '*' all cost 1). Your cost is energy, not
@@ -45,8 +55,11 @@ The waypoint cells are not passed in - scan the grid for '*' yourself:
 Return a list of "N"/"S"/"E"/"W" moves, exactly like the standard solver.
 """
 
-# Opt in to hard mode. Trim this list to just the modifiers you actually
-# handle - claiming one you break costs you points.
+# Compete in the hard pool. This solver is never run on the standard maps.
+MODE = "hard"
+
+# Trim this list to just the modifiers you actually handle - claiming one
+# you break costs you points.
 MODIFIERS = ["terrain", "risk", "waypoints"]
 
 MOVES = {

@@ -391,7 +391,7 @@ def main():
     pal = Palette(color_enabled(args.no_color))
 
     grid, start, target, waypoints = load_map_ex(args.map_file)
-    solve_fn, declared_mods = load_team(args.solver_file)
+    solve_fn, declared_mods, _mode = load_team(args.solver_file)
 
     # The scorer only applies modifiers on the hard-map pool. The visualizer
     # has no pool, so treat a map as hard when it actually uses a hard-mode

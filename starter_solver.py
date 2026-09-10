@@ -15,15 +15,21 @@ Rules:
   unless your instructor says otherwise).
 - Do not hardcode answers to the specific practice map — your solver
   will be run against maps you haven't seen.
-- Optional: to compete in hard mode, add a module-level
-  `MODIFIERS = ["terrain", "risk", "waypoints"]` (any subset) and handle
-  weighted `1`-`9` cells and mandatory `*` waypoints. See
-  `starter_hard_solver.py` for the setup and PROJECT_README.md
-  ("Hard mode") for the rules. Leave it out to stay in standard mode.
+- This file competes in the EASY pool: five standard maps, each worth up
+  to 1.00 point. Easy solvers are never run on the hard maps.
+- To compete in hard mode instead, copy `starter_hard_solver.py`. That
+  pool is five different maps and each one is worth up to 1.00 x the
+  modifier bonuses you claim (2.53 with all three) - which is the only
+  way to score above 5.00. You are in one pool or the other, never both.
+  See PROJECT_README.md ("Hard mode") for the rules.
 grid:   list of lists of characters ('.', '#', 'S', 'T')
 start:  (row, col) tuple
 target: (row, col) tuple
 """
+
+# Which map pool this solver competes in. Leave it as "easy" unless you are
+# writing a hard-mode solver - see starter_hard_solver.py.
+MODE = "easy"
 
 # Hint: a queue is a handy building block for BFS. You don't have to use it.
 from collections import deque  # noqa: F401
