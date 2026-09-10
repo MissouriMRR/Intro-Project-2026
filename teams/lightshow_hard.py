@@ -51,7 +51,7 @@ Return a list of "N"/"S"/"E"/"W" moves, exactly like the standard solver.
 # handle - claiming one you break costs you points.
 # MODIFIERS = ["terrain", "risk", "waypoints"]
 
-MODIFIERS = ["risk"]
+MODIFIERS = ["terrain","risk","waypoints"]
 
 MOVES = {
     "N": (-1, 0),
@@ -97,7 +97,34 @@ def check_pos_validity(grid, row, col, row_max, col_max):
 def calc_h(row, col, dest):
 
     # Calculate manhattan distance
+    # Also used to calculate the distance from waypoints to the target
     return abs(row - dest[0]) + abs(col - dest[1])
+
+def get_terrain_cost(grid, row, col):
+
+    if not "terrain" in MODIFIERS:
+        return 1
+
+    if grid[row][col] == '.':
+
+        return 1
+
+    elif grid[row][col] == '*':
+    
+        return 1
+
+    elif grid[row][col] == 'S':
+        
+        return 1
+
+    elif grid[row][col] == 'T':
+        
+        return 1
+
+    else:
+
+        return int(grid[row][col])
+
 
 
 def trace_target_route(cell_data, dest):
@@ -136,19 +163,12 @@ def trace_target_route(cell_data, dest):
     return path
 
 
-def solve(grid, start, target):
+def a_star(grid, start, target):
 
     # https://www.geeksforgeeks.org/dsa/a-search-algorithm/ referenced
 
     rows = len(grid)
     cols = len(grid[0])
-
-    dest_coord = (None, None)
-
-    for i in range(rows):
-        for j in range(cols):
-            if grid[i][j] == "T":
-                dest_coord = i, j
 
     closed_grid = [[False for _ in range(cols)] for _ in range(rows)]
 
@@ -190,17 +210,17 @@ def solve(grid, start, target):
             if check_pos_validity(grid, new_i, new_j, rows, cols) and (
                 not closed_grid[new_i][new_j]
             ):
-                if grid[new_i][new_j] == "T":
+                if (new_i,new_j) == target:
                     cell_data[new_i][new_j]["parent_i"] = i
                     cell_data[new_i][new_j]["parent_j"] = j
 
-                    path = trace_target_route(cell_data, dest_coord)
+                    path = trace_target_route(cell_data, target)
                     found = True
                     return path
 
                 else:
-                    g_new = cell_data[i][j]["g"] + 1
-                    h_new = calc_h(new_i, new_j, dest_coord)
+                    g_new = cell_data[i][j]["g"] + get_terrain_cost(grid, new_i, new_j)
+                    h_new = calc_h(new_i, new_j, target)
                     f_new = g_new + h_new
 
                     if (
@@ -217,6 +237,44 @@ def solve(grid, start, target):
 
     if not found:
         return []
+
+def solve(grid, start, target):
+
+    if not "waypoints" in MODIFIERS:
+
+        return a_star(grid, start, target)
+
+    path = []
+
+    # Use example code
+    waypoints = [
+            (r, c)
+            for r, row in enumerate(grid)
+            for c, ch in enumerate(row)
+            if ch == "*"
+        ]
+
+    # Tackle waypoints from furthest to closest.
+    waypoints.sort(key = lambda wp: calc_h(wp[0],wp[1],target))
+    waypoints.reverse()
+
+    waypoint_num = len(waypoints)
+
+    if waypoint_num != 0:
+        path.extend(a_star(grid, start, waypoints[0]))
+    else:
+        return a_star(grid, start, target)
+
+    i = 1
+
+    while i < waypoint_num:
+
+        path.extend(a_star(grid, waypoints[i-1], waypoints[i]))
+        i = i + 1
+
+    path.extend(a_star(grid, waypoints[i-1], target))
+
+    return path
 
 
 if __name__ == "__main__":
