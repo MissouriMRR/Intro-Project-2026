@@ -1,6 +1,6 @@
 """
 starter_solver.py
-TEAM NAME: <fill in your team name here>
+TEAM NAME: AI Team
 
 Your job: implement solve() so it returns a list of moves that flies
 the drone from `start` to `target` without crossing any '#' cells.
@@ -36,32 +36,32 @@ MOVES = {
 }
 
 
-def mine_check(grid, x, y):
-    try:
-        if grid[x][y] == "#":
-            return True
-        return False
-    except:
-        return True
-
-
-def solve(grid, start, target):
-    path = []
-    current = start
-    for _ in range(25):
+# shoutout to the type errors
+def solve(
+    grid: list[list[str]], start: tuple[int, int], target: tuple[int, int]
+) -> list[str]:
+    queue = deque([start])
+    parents: dict[tuple[int, int], tuple[tuple[int, int], str] | None] = {start: None}
+    while queue:
+        current = queue.popleft()
         if current == target:
-            break
-        delta = [current[0] - target[0], current[1] - target[1]]
-        if delta[0] != target[0] and not mine_check(grid, current[0] + 1, current[1]):
-            path.append("S")
-            current = (current[0] + 1, current[1])
-        elif delta[1] != target[1] and not mine_check(grid, current[0], current[1] + 1):
-            path.append("E")
-            current = (current[0], current[1] + 1)
-        else:
-            path.append("N")
-            current = (current[0] - 1, current[1])
-    return path
+            path: list[str] = []
+            while (parent := parents[current]) is not None:
+                previous, move = parent
+                path.append(move)
+                current = previous
+            return path[::-1]
+        for move, (dr, dc) in MOVES.items():
+            row = current[0] + dr
+            col = current[1] + dc
+            neighbor = (row, col)
+            if not (0 <= row < len(grid) and 0 <= col < len(grid[0])):
+                continue
+            if grid[row][col] == "#" or neighbor in parents:
+                continue
+            parents[neighbor] = (current, move)
+            queue.append(neighbor)
+    return []
 
 
 if __name__ == "__main__":
