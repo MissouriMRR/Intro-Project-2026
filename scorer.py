@@ -16,11 +16,18 @@ run the real event, score both pools:
 Each team file must define solve(grid, start, target) -> list of moves,
 matching the interface in starter_solver.py. It MAY also define:
 
-    MODIFIERS = ["terrain", "risk", "waypoints"]   # any subset
+    MODE      = "easy" | "hard"                    # which pool it runs in
+    MODIFIERS = ["terrain", "risk", "waypoints"]   # any subset, hard only
 
-Modifiers are opt-in and only ever apply on the hard-maps pool. Each one
-raises the score ceiling on a hard map but adds a constraint the team can
-fail. See PROJECT_README.md ("Hard mode") for the full rules.
+Every solver competes in exactly ONE pool. A hard solver is never run on
+the standard maps and an easy solver is never run on the hard maps. If a
+file omits MODE, the pool is inferred: any MODIFIERS at all means it was
+written for hard mode.
+
+Scoring is absolute, not relative to the field: a map is worth up to 1.00
+point in the easy pool, and up to 1.00 x every modifier bonus the team
+earned in the hard pool (1.35 x 1.25 x 1.5 = 2.53 with all three). That is
+what makes hard mode worth entering. See PROJECT_README.md ("Hard mode").
 """
 
 import argparse
@@ -47,6 +54,9 @@ DEFAULT_HARD_MAPS = "maps/scoring_maps_hard/*.txt"
 
 # --- hard-mode tuning knobs -------------------------------------------------
 VALID_MODIFIERS = ("terrain", "risk", "waypoints")
+
+# A solver competes in exactly one map pool.
+VALID_MODES = ("easy", "hard")
 
 # Score multiplier a team earns on a hard map for each modifier it has
 # enabled AND satisfied. They stack multiplicatively.
@@ -266,6 +276,36 @@ def get_modifiers(module):
     return frozenset(mods)
 
 
+def get_mode(module, modifiers):
+    """Which map pool this solver competes in.
+
+    A file may declare MODE = "easy" | "hard" explicitly. If it does not,
+    infer from MODIFIERS: any modifier at all means it was written for hard
+    mode. Every solver runs in exactly one pool.
+    """
+    raw = getattr(module, "MODE", None)
+    if raw is None:
+        return "hard" if modifiers else "easy"
+    mode = str(raw).strip().lower()
+    if mode in ("standard", "normal"):
+        mode = "easy"
+    if mode not in VALID_MODES:
+        raise ValueError(f"unknown MODE {raw!r}; valid: {list(VALID_MODES)}")
+    return mode
+
+
+def max_points_per_map(mode, modifiers):
+    """Ceiling for one map: 1.00 in the easy pool, 1.00 x every modifier
+    bonus claimed in the hard pool. This is what makes hard mode worth
+    entering - it is the whole reason the two pools are comparable."""
+    if mode != "hard":
+        return 1.0
+    cap = 1.0
+    for m in modifiers:
+        cap *= MODIFIER_BONUS[m]
+    return cap
+
+
 def load_solver(filepath):
     module = _import_module(filepath)
     if not hasattr(module, "solve"):
@@ -274,11 +314,12 @@ def load_solver(filepath):
 
 
 def load_team(filepath):
-    """Return (solve_fn, modifiers) for a team file."""
+    """Return (solve_fn, modifiers, mode) for a team file."""
     module = _import_module(filepath)
     if not hasattr(module, "solve"):
         raise AttributeError(f"{filepath} does not define solve(grid, start, target)")
-    return module.solve, get_modifiers(module)
+    mods = get_modifiers(module)
+    return module.solve, mods, get_mode(module, mods)
 
 
 def run_solver_on_map(solve_fn, grid, start, target, modifiers, waypoints):
@@ -297,23 +338,32 @@ def run_solver_on_map(solve_fn, grid, start, target, modifiers, waypoints):
 
 def score_round(teams, standard_maps, hard_maps):
     """
-    teams: list of (name, solve_fn, modifiers)
+    teams: list of (name, solve_fn, modifiers, mode)
+
+    Each team is run only against the pool matching its mode - a hard
+    solver never sees a standard map, and vice versa. Points are absolute
+    (eff / BASE_POINTS), not normalised against the rest of the field, so a
+    team's score does not depend on who else entered.
+
     Returns (leaderboard, detail) where leaderboard is a sorted list of
-    (name, points, standard_solved, hard_solved) and detail[name][map] is
-    a per-map record.
+    (name, points, mode, solved, pool_size) and detail[name][map] is a
+    per-map record.
     """
-    names = [name for name, _, _ in teams]
+    names = [name for name, _, _, _ in teams]
     points = {name: 0.0 for name in names}
     detail: dict[str, dict[str, dict[str, Any]]] = {name: {} for name in names}
 
     jobs = [(p, False) for p in standard_maps] + [(p, True) for p in hard_maps]
     for map_path, is_hard in jobs:
+        pool = "hard" if is_hard else "easy"
+        entrants = [t for t in teams if t[3] == pool]
+        if not entrants:
+            continue
         grid, start, target, waypoints = load_map_ex(map_path)
         map_active = active_modifiers(grid) if is_hard else frozenset()
         optimal_cache: dict[frozenset[str], float] = {}
 
-        rows = []
-        for name, solve_fn, mods in teams:
+        for name, solve_fn, mods, _mode in entrants:
             eff_mods = frozenset(mods) & map_active
             req_wps = tuple(waypoints) if "waypoints" in eff_mods else ()
             run = run_solver_on_map(solve_fn, grid, start, target, eff_mods, req_wps)
@@ -327,11 +377,8 @@ def score_round(teams, standard_maps, hard_maps):
             else:
                 optimal = INF
                 eff = 0.0
-            rows.append((name, eff, optimal, eff_mods, run))
 
-        best = max((eff for _, eff, _, _, _ in rows), default=0.0)
-        for name, eff, optimal, eff_mods, run in rows:
-            pts = eff / best if best > 0 else 0.0
+            pts = eff / BASE_POINTS
             points[name] += pts
             res = run.get("result", {})
             detail[name][map_path] = {
@@ -350,12 +397,11 @@ def score_round(teams, standard_maps, hard_maps):
                 "risk_cap_hit": bool(res.get("risk_cap_hit")),
             }
 
+    pool_size = {"easy": len(standard_maps), "hard": len(hard_maps)}
     leaderboard = []
-    for name in names:
-        recs = detail[name].values()
-        std_solved = sum(1 for r in recs if not r["hard"] and r["success"])
-        hard_solved = sum(1 for r in recs if r["hard"] and r["success"])
-        leaderboard.append((name, points[name], std_solved, hard_solved))
+    for name, _fn, _mods, mode in teams:
+        solved = sum(1 for r in detail[name].values() if r["success"])
+        leaderboard.append((name, points[name], mode, solved, pool_size[mode]))
     leaderboard.sort(key=lambda x: x[1], reverse=True)
     return leaderboard, detail
 
@@ -395,35 +441,52 @@ def main():
     for solver_file in args.solver_files:
         team_name = Path(solver_file).stem
         try:
-            solve_fn, mods = load_team(solver_file)
+            solve_fn, mods, mode = load_team(solver_file)
         except Exception as exc:
             print(f"[{team_name}] failed to load: {exc}")
             load_errors.append(team_name)
             continue
-        teams.append((team_name, solve_fn, mods))
+        if mode == "easy" and mods:
+            print(
+                f"[{team_name}] MODE='easy' but MODIFIERS={sorted(mods)} - "
+                "modifiers only apply in the hard pool, ignoring them"
+            )
+            mods = frozenset()
+        teams.append((team_name, solve_fn, mods, mode))
 
     if not teams:
         print("No loadable solvers.")
         return
 
-    mods_by_team = {name: mods for name, _, mods in teams}
+    n_std, n_hard = len(standard_maps), len(hard_maps)
+    for mode, pool_maps in (("easy", standard_maps), ("hard", hard_maps)):
+        entered = [t[0] for t in teams if t[3] == mode]
+        if entered and not pool_maps:
+            print(f"[warning] no {mode}-pool maps to score: {', '.join(entered)}")
+
+    mods_by_team = {name: mods for name, _, mods, _ in teams}
     leaderboard, detail = score_round(teams, standard_maps, hard_maps)
 
-    n_std, n_hard = len(standard_maps), len(hard_maps)
+    hard_ceiling = n_hard * max_points_per_map("hard", VALID_MODIFIERS)
     print("\n=== LEADERBOARD ===")
-    for rank, (name, pts, std_solved, hard_solved) in enumerate(leaderboard, 1):
-        mods = mods_by_team.get(name)
+    print(
+        f"    easy pool: {n_std} maps, max {float(n_std):.2f} pts  |  "
+        f"hard pool: {n_hard} maps, max {hard_ceiling:.2f} pts "
+        f"(with all {len(VALID_MODIFIERS)} modifiers)"
+    )
+    for rank, (name, pts, mode, solved, pool_size) in enumerate(leaderboard, 1):
+        mods = mods_by_team.get(name) or frozenset()
         mod_str = ",".join(sorted(mods)) if mods else "-"
-        line = f"{rank}. {name:20s} points={pts:7.2f}  standard {std_solved}/{n_std}"
-        if n_hard:
-            line += f"  hard {hard_solved}/{n_hard}"
-        line += f"  mods: {mod_str}"
-        print(line)
+        cap = pool_size * max_points_per_map(mode, mods)
+        print(
+            f"{rank}. {name:20s} points={pts:6.2f}/{cap:5.2f}  "
+            f"[{mode:4s}] solved {solved}/{pool_size}  mods: {mod_str}"
+        )
     for name in load_errors:
         print(f"-. {name:20s} points=   DNF  (failed to load)")
 
     print("\n=== DETAIL ===")
-    for name, _pts, _s, _h in leaderboard:
+    for name, _pts, _mode, _solved, _size in leaderboard:
         print(f"\n{name}:")
         for map_path, r in detail[name].items():
             tag = "HARD" if r["hard"] else "std "

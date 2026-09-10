@@ -62,7 +62,7 @@ Add `--delay 0.5` to slow the replay down, or `--no-color` for plain output.
 | File                                  | Purpose                                                                                                                                                       |
 | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `starter_solver.py`                   | **Start here.** Contains the interface + a placeholder that intentionally fails, so you can confirm the harness runs before writing real logic                |
-| `starter_hard_solver.py`              | Same placeholder, but shows how to opt in to hard mode with a `MODIFIERS` list and how to find the `*` waypoints. Copy it if you want to compete in hard mode |
+| `starter_hard_solver.py`              | Same placeholder, but shows how to enter the hard pool with `MODE` + `MODIFIERS` and how to find the `*` waypoints. Copy it if you want to compete in hard mode |
 | `map_utils.py`                        | Loads map files, shared move constants                                                                                                                        |
 | `scorer.py`                           | Runs one or more solvers against a set of maps and prints a leaderboard                                                                                       |
 | `visualize.py`                        | Draws the route your solver flew (direction arrows, revisits, crash point) with an optional step-by-step replay                                               |
@@ -70,10 +70,11 @@ Add `--delay 0.5` to slow the replay down, or `--no-color` for plain output.
 | `maps/practice_maps/practice_map.txt` | Use this map for testing as you develop your algorithm                                                                                                        |
 | `maps/practice_maps/hard/`            | Hard-mode practice maps (weighted airspace + waypoints); not scored by the default practice glob                                                              |
 
-The scoring maps live in `maps/scoring_maps/` and are revealed only at
-scoring time — this is what actually determines the leaderboard. Your
-solver is run against maps you have not seen, so hardcoding a path for
-the practice map will not work.
+The scoring maps live in `maps/scoring_maps/` (five easy) and
+`maps/scoring_maps_hard/` (five hard) and are revealed only at scoring
+time — this is what actually determines the leaderboard. Your solver is
+run against the five maps in its pool, none of which you have seen, so
+hardcoding a path for the practice map will not work.
 
 All maps are auto-generated with a guaranteed valid path
 (verified via BFS at generation time), so nobody can get stuck on an
@@ -101,39 +102,64 @@ Run:
 uv run scorer.py <solver_team_1.py> <solver_team_2.py>
 ```
 
-Scoring is **relative to the best solver in the round**. On each map every
-team gets a raw score:
+### Two pools, one of them yours
+
+There are **two map pools**, five maps each, and your solver competes in
+exactly one of them:
+
+| Pool     | Maps                       | Worth per map                              |
+| -------- | -------------------------- | ------------------------------------------ |
+| **easy** | 5 standard maps            | up to **1.00** point → 5.00 max            |
+| **hard** | 5 hard maps                | up to **1.00 × your modifier bonuses** → 12.66 max with all three |
+
+An easy solver is never run on the hard maps, and a hard solver is never
+run on the standard maps. You cannot farm points from both. Declare your
+pool with a module-level `MODE`:
+
+```python
+MODE = "easy"   # or "hard"
+```
+
+If you leave `MODE` out, the scorer infers it: any `MODIFIERS` at all
+means hard, none means easy.
+
+### The per-map score
+
+Scoring is **absolute**, not a curve against the rest of the field — your
+score does not depend on who else entered. On each map:
 
 ```
-raw = 100 * (optimal_cost / your_cost) / (1 + runtime_seconds)
+raw    = 100 * (optimal_cost / your_cost) / (1 + runtime_seconds)
+points = raw / 100 * (your modifier bonuses, hard pool only)
 ```
 
-`optimal_cost` is the cost of the best route the scorer can find; `your_cost`
-is your path length (see hard mode for how cost changes there). Because the
-scorer's route is optimal, `optimal_cost / your_cost` is always between 0 and
-1: `1.0` means you matched the best route, `0.5` means yours cost twice as
-much. Reaching the target on the shortest path with a fast solver gives `raw`
-near 100; not reaching it gives 0. Your points for that map are then
-`your_raw / best_raw_on_that_map`, so a route 5% better than everyone
-else's is a 5% edge. Points are summed across all maps.
+`optimal_cost` is the cost of the best route the scorer can find;
+`your_cost` is your path length (see hard mode for how cost changes
+there). Because the scorer's route is optimal, `optimal_cost / your_cost`
+is always between 0 and 1: `1.0` means you matched the best route, `0.5`
+means yours cost twice as much. Reaching the target on the shortest path
+with a fast solver gives ~1.00 point; not reaching it gives 0. Points are
+summed across your pool's five maps.
 
 There's a 5-second time limit per map (`TIME_LIMIT_SECONDS` in
-`scorer.py`). A plain BFS shortest-path solver scores well in standard
-mode — to pull ahead you need hard mode.
+`scorer.py`). A plain BFS shortest-path solver maxes out the easy pool at
+5.00 — to score higher than that you have to enter hard mode.
 
 ## Hard mode
 
-Standard mode has one right answer (shortest path), so the leaderboard
-bunches up. Hard mode adds a second pool of maps with extra structure and
-lets each team **opt in** to scoring against it for a shot at more points.
+The easy pool has one right answer (shortest path), so a correct solver
+tops out at 5.00 and the leaderboard bunches up. Hard mode is a different
+pool of maps with extra structure, and a much higher ceiling for teams
+willing to take on the extra rules.
 
-Enable it by adding a module-level `MODIFIERS` list to your solver file:
+Enter it by declaring `MODE` and a `MODIFIERS` list in your solver file:
 
 ```python
-MODIFIERS = ["terrain", "risk", "waypoints"]  # any subset; omit for standard only
+MODE      = "hard"
+MODIFIERS = ["terrain", "risk", "waypoints"]  # any subset
 ```
 
-Each modifier you enable multiplies your score on every hard map, and
+Each modifier you enable multiplies what a hard map is worth to you, and
 they stack — but each one also adds a constraint you can fail. Hard maps
 use two extra characters: digits `1`–`9` (weighted airspace) and `*`
 (a mandatory waypoint).
@@ -149,10 +175,15 @@ enter. Only digits `2`–`9` cost more.
 | `waypoints` | The drone must fly over every `*` before landing on `T`. Visiting order is yours to choose.         | ×1.50 | Miss any `*` → **0 for that map**                                                                       |
 
 So a team that enables all three and flies a near-optimal waypoint tour
-within budget scores about `100 × 1.35 × 1.25 × 1.5 ≈ 253` on a hard map,
-versus `~100` for a plain BFS run — but one missed waypoint zeros the map,
-and a disciplined BFS team that never gambles can win the round if the
-ambitious teams stumble.
+within budget earns about `1.00 × 1.35 × 1.25 × 1.5 ≈ 2.53` points on a
+hard map — **12.66** across the pool, against the easy pool's 5.00 ceiling.
+Enter hard mode with no modifiers and each map still caps at 1.00, so you
+gain nothing by showing up: the bonuses *are* the reason to be there.
+
+The flip side is that one missed waypoint zeros a map outright, and a
+blown energy budget or a tripped risk cap costs you ×0.4 — so a team that
+claims all three and stumbles can finish below a disciplined easy team.
+Claim only the modifiers you actually handle.
 
 The `risk` cap only ever bites a solver that steers into a wedge on its
 own. Every hard map is generated so that a route respecting the cap
@@ -160,12 +191,12 @@ reaches every `*` and `T` — you are never forced through a one-wide gap
 between two obstacles — and the scorer's reference route treats a
 `≥2`-wall cell as impassable, so `optimal` is always a clean path.
 
-Modifiers only ever apply on the hard pool. Standard maps are always
-scored plain, for everyone. A no-`MODIFIERS` solver still runs on hard
-maps (it just can't earn the bonuses, and it ignores the `*` cells).
+A modifier only pays out on a map that actually exercises it — you earn
+the `waypoints` bonus only where there are `*` cells to visit.
 
 Copy `starter_hard_solver.py` as your starting point - it already has the
-`MODIFIERS` line and shows how to pull the `*` waypoints out of the grid.
+`MODE` and `MODIFIERS` lines and shows how to pull the `*` waypoints out
+of the grid.
 
 Practice against a hard map you generate yourself, then score with
 `--hard-maps`:
