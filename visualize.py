@@ -328,10 +328,13 @@ def clear_screen(pal):
         print("\n" * 2)
 
 
-def animate(grid, visited, moves, start, target, pal, delay, crash_cell):
+def animate(grid, visited, moves, start, target, pal, delay, crash_cell, title=""):
     total = len(visited) - 1
     for step, pos in enumerate(visited):
         clear_screen(pal)
+        if title:
+            print(f"{pal.bold}{title}{pal.reset}")
+            print()
         if step == 0:
             action = "takeoff"
         else:
@@ -348,6 +351,9 @@ def animate(grid, visited, moves, start, target, pal, delay, crash_cell):
 
     if crash_cell is not None:
         clear_screen(pal)
+        if title:
+            print(f"{pal.bold}{title}{pal.reset}")
+            print()
         print(
             f"{pal.bold}Step {total + 1}/{total}{pal.reset}   {pal.crash} CRASH {pal.reset}"
         )
@@ -385,6 +391,11 @@ def main():
         action="store_true",
         help="Enable every modifier the map exercises, ignoring the solver's MODIFIERS",
     )
+    parser.add_argument(
+        "--title",
+        default="",
+        help="Header line drawn above every frame (e.g. the team name) for demos",
+    )
     args = parser.parse_args()
 
     enable_ansi()
@@ -416,10 +427,14 @@ def main():
 
     if args.animate:
         animate(
-            grid, result["visited"], moves, start, target, pal, args.delay, crash_cell
+            grid, result["visited"], moves, start, target, pal, args.delay,
+            crash_cell, args.title,
         )
         print()
     else:
+        if args.title:
+            print()
+            print(f"{pal.bold}{args.title}{pal.reset}")
         print()
         print(
             render(grid, result["visited"], start, target, pal, crash_cell=crash_cell)
