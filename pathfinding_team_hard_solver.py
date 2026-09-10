@@ -90,8 +90,6 @@ def node_connection(grid, node_list, start, end):
     connections.clear()
     j=i+1
     while(j<n):
-      print(nodes[i])
-      print(nodes[j])
       output, cost = a_star(grid, nodes[i], nodes[j], manhattan)
       node_connection_list.append((i,j,cost,output))
       j+=1
